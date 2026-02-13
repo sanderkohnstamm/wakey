@@ -1,0 +1,16 @@
+services:
+  wakey:
+    build: .
+    restart: unless-stopped
+    volumes:
+      # Persist alarm data across container rebuilds
+      - ./data/alarms.json:/app/data/alarms.json
+      # PulseAudio socket — lets container play audio through host's Bluetooth speaker
+      - /run/user/1000/pulse:/run/user/1000/pulse
+      - ${HOME}/.config/pulse/cookie:/root/.config/pulse/cookie:ro
+    environment:
+      - PULSE_SERVER=unix:/run/user/1000/pulse/native
+      - WAKEY_DATA=/app/data/alarms.json
+    # Host network so the container can reach the Hue bridge on LAN
+    # and be accessed on port 8000 without mapping
+    network_mode: host

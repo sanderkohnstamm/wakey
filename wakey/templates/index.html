@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#111113">
+  <title>Wakey</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <!-- Main View -->
+  <div id="view-main" class="view active">
+    <div class="clock" id="clock">00:00</div>
+    <div class="date" id="date-display"></div>
+    <div class="next-alarm" id="next-alarm"></div>
+
+    <div id="alarm-active-panel" class="alarm-active-panel hidden">
+      <div class="alarm-status" id="alarm-status-text"></div>
+      <div class="alarm-actions">
+        <button class="btn btn-snooze" id="btn-snooze">Snooze</button>
+        <button class="btn btn-dismiss" id="btn-dismiss">Dismiss</button>
+      </div>
+    </div>
+
+    <div id="home-alarms" class="home-alarms"></div>
+
+    <div class="main-buttons">
+      <button class="btn btn-settings" id="btn-go-settings">Alarms</button>
+      <button class="btn btn-settings" id="btn-go-configure">Configure</button>
+    </div>
+  </div>
+
+  <!-- Settings View (alarm list) -->
+  <div id="view-settings" class="view">
+    <div class="view-header">
+      <button class="btn btn-back" id="btn-back-main">&larr;</button>
+      <h2>Alarms</h2>
+      <button class="btn btn-add" id="btn-add-alarm">+</button>
+    </div>
+    <div id="alarm-list" class="alarm-list"></div>
+  </div>
+
+  <!-- Edit Alarm View -->
+  <div id="view-edit" class="view">
+    <div class="view-header">
+      <button class="btn btn-back" id="btn-back-settings">&larr;</button>
+      <h2 id="edit-title">Edit Alarm</h2>
+      <button class="btn btn-delete" id="btn-delete-alarm">Delete</button>
+    </div>
+    <form id="alarm-form" class="alarm-form">
+      <div class="form-group">
+        <label for="f-time">Time</label>
+        <input type="time" id="f-time" required>
+      </div>
+
+      <div class="form-group">
+        <label for="f-label">Label</label>
+        <input type="text" id="f-label" placeholder="Optional label">
+      </div>
+
+      <div class="form-group">
+        <label>Days</label>
+        <div class="day-pills" id="f-days">
+          <button type="button" class="pill" data-day="0">Mon</button>
+          <button type="button" class="pill" data-day="1">Tue</button>
+          <button type="button" class="pill" data-day="2">Wed</button>
+          <button type="button" class="pill" data-day="3">Thu</button>
+          <button type="button" class="pill" data-day="4">Fri</button>
+          <button type="button" class="pill" data-day="5">Sat</button>
+          <button type="button" class="pill" data-day="6">Sun</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="f-station">Radio Station</label>
+        <select id="f-station"></select>
+      </div>
+
+      <div class="form-group">
+        <label for="f-volume">Volume <span id="f-volume-val">70</span>%</label>
+        <input type="range" id="f-volume" min="10" max="100" value="70">
+      </div>
+
+      <fieldset class="form-group">
+        <legend>Sunrise Lights</legend>
+        <div class="form-row">
+          <label>
+            <input type="checkbox" id="f-hue-enabled" checked>
+            Enable sunrise
+          </label>
+        </div>
+        <div class="form-row">
+          <label for="f-hue-room">Room</label>
+          <select id="f-hue-room"><option value="">--</option></select>
+          <button type="button" class="btn btn-small" id="btn-refresh-rooms">Refresh</button>
+        </div>
+        <div class="form-row">
+          <label for="f-hue-offset">Start <span id="f-offset-val">20</span> min before</label>
+          <input type="range" id="f-hue-offset" min="5" max="45" value="20">
+        </div>
+      </fieldset>
+
+      <div class="form-group">
+        <label for="f-snooze">Snooze <span id="f-snooze-val">9</span> min</label>
+        <input type="range" id="f-snooze" min="1" max="30" value="9">
+      </div>
+
+      <div class="form-group">
+        <label for="f-autostop">Auto-stop <span id="f-autostop-val">30</span> min</label>
+        <input type="range" id="f-autostop" min="5" max="60" value="30">
+      </div>
+
+      <button type="submit" class="btn btn-save">Save</button>
+    </form>
+  </div>
+
+  <!-- Configure View -->
+  <div id="view-configure" class="view">
+    <div class="view-header">
+      <button class="btn btn-back" id="btn-back-main-cfg">&larr;</button>
+      <h2>Configure</h2>
+      <div></div>
+    </div>
+
+    <!-- Radio Test -->
+    <section class="config-section">
+      <h3>Radio</h3>
+      <div class="form-group">
+        <label for="cfg-station">Station</label>
+        <select id="cfg-station"></select>
+      </div>
+      <div class="form-group">
+        <label for="cfg-volume">Volume <span id="cfg-volume-val">50</span>%</label>
+        <input type="range" id="cfg-volume" min="10" max="100" value="50">
+      </div>
+      <div class="config-actions">
+        <button class="btn btn-test" id="btn-test-radio">Test Radio</button>
+        <button class="btn btn-stop" id="btn-stop-radio">Stop</button>
+      </div>
+      <div id="radio-status" class="status-msg"></div>
+    </section>
+
+    <!-- Hue Connection -->
+    <section class="config-section">
+      <h3>Philips Hue</h3>
+      <div class="form-group">
+        <label for="cfg-hue-ip">Bridge IP</label>
+        <input type="text" id="cfg-hue-ip" placeholder="192.168.1.x">
+      </div>
+      <div class="form-group">
+        <label for="cfg-hue-user">API Username</label>
+        <input type="text" id="cfg-hue-user" placeholder="Generated automatically">
+      </div>
+      <div class="config-actions">
+        <button class="btn btn-test" id="btn-generate-key">Generate API Key</button>
+        <button class="btn btn-save" id="btn-save-hue">Save</button>
+      </div>
+      <p class="hint">Press the button on your Hue Bridge, then tap Generate.</p>
+      <div class="config-actions" style="margin-top: 8px">
+        <button class="btn btn-small" id="btn-test-hue">Test Connection</button>
+      </div>
+      <div id="hue-status" class="status-msg"></div>
+
+      <div class="form-group" style="margin-top: 16px">
+        <label for="cfg-hue-room">Room</label>
+        <select id="cfg-hue-room"><option value="">-- save connection first --</option></select>
+      </div>
+      <div class="config-actions">
+        <button class="btn btn-small" id="btn-cfg-refresh-rooms">Load Rooms</button>
+        <button class="btn btn-test" id="btn-test-light">Test Light</button>
+      </div>
+      <div id="light-status" class="status-msg"></div>
+    </section>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

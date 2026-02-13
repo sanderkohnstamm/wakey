@@ -1,0 +1,516 @@
+/* Wakey - Clean dark theme, mobile-first */
+
+:root {
+  --bg: #111113;
+  --bg-raised: #1c1c1e;
+  --bg-input: #2c2c2e;
+  --border: #38383a;
+  --text: #f0f0f0;
+  --text-secondary: #98989f;
+  --primary: #6e9fff;
+  --primary-dim: rgba(110, 159, 255, 0.15);
+  --danger: #c44;
+  --danger-dim: rgba(204, 68, 68, 0.15);
+  --success: #5ab583;
+  --warning: #d4a050;
+  --radius: 10px;
+  --radius-sm: 8px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Views */
+.view {
+  display: none;
+  padding: 24px 16px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+.view.active {
+  display: block;
+}
+
+/* ── Main view ── */
+
+.clock {
+  font-size: 4.5rem;
+  font-weight: 300;
+  text-align: center;
+  letter-spacing: 2px;
+  margin-top: 12vh;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.date {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin-top: 6px;
+}
+
+.next-alarm {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-top: 14px;
+  min-height: 1.4em;
+}
+
+.main-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 32px;
+}
+
+/* ── Alarm active panel ── */
+
+.alarm-active-panel {
+  margin-top: 32px;
+  text-align: center;
+}
+.alarm-active-panel.hidden {
+  display: none;
+}
+.alarm-status {
+  font-size: 1rem;
+  color: var(--warning);
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+.alarm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* ── Buttons ── */
+
+.btn {
+  border: none;
+  border-radius: var(--radius);
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-appearance: none;
+  transition: opacity 0.15s, transform 0.1s;
+  color: var(--text);
+  background: var(--bg-input);
+}
+.btn:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+}
+
+.btn-dismiss {
+  background: var(--danger);
+  color: #fff;
+  font-size: 1.1rem;
+  padding: 14px 36px;
+}
+.btn-snooze {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  font-size: 1.1rem;
+  padding: 14px 28px;
+}
+.btn-settings {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  padding: 12px 28px;
+}
+.btn-save {
+  width: 100%;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+  padding: 13px;
+  margin-top: 16px;
+  font-size: 1rem;
+}
+.btn-back {
+  background: none;
+  font-size: 1.3rem;
+  padding: 8px 12px;
+  color: var(--primary);
+}
+.btn-add {
+  background: var(--primary);
+  color: #fff;
+  font-size: 1.3rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-delete {
+  background: var(--danger-dim);
+  color: var(--danger);
+  padding: 7px 14px;
+  font-size: 0.8rem;
+}
+.btn-small {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  background: var(--bg-input);
+}
+.btn-test {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+}
+.btn-stop {
+  background: var(--danger-dim);
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* ── View header ── */
+
+.view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.view-header h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* ── Alarm list ── */
+
+.alarm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.alarm-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.alarm-card:hover {
+  background: var(--bg-input);
+}
+.alarm-card .time {
+  font-size: 1.8rem;
+  font-weight: 300;
+  min-width: 90px;
+  font-variant-numeric: tabular-nums;
+}
+.alarm-card .info {
+  flex: 1;
+}
+.alarm-card .label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.alarm-card .days-text {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+.alarm-card.disabled .time,
+.alarm-card.disabled .info {
+  opacity: 0.35;
+}
+
+/* ── Toggle switch ── */
+
+.toggle {
+  position: relative;
+  width: 46px;
+  height: 28px;
+  flex-shrink: 0;
+}
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggle .slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-input);
+  border-radius: 28px;
+  transition: 0.25s;
+  cursor: pointer;
+}
+.toggle .slider::before {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  left: 3px;
+  bottom: 3px;
+  background: #8e8e93;
+  border-radius: 50%;
+  transition: 0.25s;
+}
+.toggle input:checked + .slider {
+  background: var(--primary);
+}
+.toggle input:checked + .slider::before {
+  background: #fff;
+  -webkit-transform: translateX(18px);
+  transform: translateX(18px);
+}
+
+/* ── Form ── */
+
+.alarm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.form-group > label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 500;
+}
+.form-group label span {
+  color: var(--text);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+fieldset.form-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+fieldset.form-group legend {
+  padding: 0 8px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 500;
+}
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.form-row label {
+  min-width: 120px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+input[type="time"],
+input[type="text"],
+select {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  width: 100%;
+  -webkit-appearance: none;
+  transition: border-color 0.15s;
+}
+input[type="time"]:focus,
+input[type="text"]:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+input[type="time"] {
+  font-size: 1.8rem;
+  font-weight: 300;
+  text-align: center;
+  padding: 14px;
+}
+select {
+  -webkit-appearance: menulist;
+}
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--primary);
+}
+input[type="checkbox"] {
+  accent-color: var(--primary);
+  width: 16px;
+  height: 16px;
+}
+
+/* ── Day pills ── */
+
+.day-pills {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.pill {
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-appearance: none;
+  transition: all 0.15s;
+}
+.pill.active {
+  background: var(--primary-dim);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ── Configure page ── */
+
+.config-section {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.config-section h3 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 14px;
+  color: var(--text-secondary);
+}
+.config-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.config-actions .btn {
+  flex: 1;
+}
+.config-actions .btn-save {
+  margin-top: 0;
+}
+
+.status-msg {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  min-height: 1.2em;
+  padding: 0 2px;
+}
+.status-msg.ok {
+  color: var(--success);
+}
+.status-msg.err {
+  color: var(--danger);
+}
+
+/* ── Home alarm list ── */
+
+.home-alarms {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.home-alarm {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.home-alarm.disabled {
+  opacity: 0.35;
+}
+.home-alarm .ha-time {
+  font-size: 1.2rem;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  min-width: 55px;
+}
+.home-alarm .ha-info {
+  flex: 1;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.home-alarm .toggle {
+  width: 40px;
+  height: 24px;
+}
+.home-alarm .toggle .slider::before {
+  width: 18px;
+  height: 18px;
+}
+.home-alarm .toggle input:checked + .slider::before {
+  -webkit-transform: translateX(16px);
+  transform: translateX(16px);
+}
+
+.hint {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+/* ── Empty state ── */
+
+.empty-state {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 48px 16px;
+  font-size: 0.95rem;
+}
+
+/* ── Responsive ── */
+
+@media (min-width: 600px) {
+  .clock {
+    font-size: 6rem;
+  }
+}
