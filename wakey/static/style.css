@@ -399,6 +399,60 @@ input[type="checkbox"] {
   font-weight: 600;
 }
 
+/* ── Bluetooth ── */
+
+.bt-current {
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+  min-height: 1.2em;
+}
+.bt-current .bt-connected {
+  color: var(--success);
+}
+.bt-current .bt-none {
+  color: var(--text-secondary);
+}
+.bt-device-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bt-device {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bt-device .bt-info {
+  flex: 1;
+  overflow: hidden;
+}
+.bt-device .bt-name {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bt-device .bt-mac {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+.bt-device .btn {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+}
+.bt-device .bt-badge {
+  font-size: 0.7rem;
+  color: var(--success);
+  font-weight: 500;
+}
+
 /* ── Configure page ── */
 
 .config-section {

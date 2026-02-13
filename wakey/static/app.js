@@ -425,6 +425,11 @@
         $("#cfg-hue-user").value = cfg.hue.username || "";
       });
 
+    // Load Bluetooth status
+    loadBtStatus();
+
+    $("#bt-status").textContent = "";
+    $("#bt-status").className = "status-msg";
     $("#radio-status").textContent = "";
     $("#radio-status").className = "status-msg";
     $("#hue-status").textContent = "";
@@ -576,5 +581,106 @@
       }
     });
   });
+
+  // ═══════════════════════════════════════
+  // ── Bluetooth ──
+  // ═══════════════════════════════════════
+
+  function loadBtStatus() {
+    fetch("/api/bluetooth/status")
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var el = $("#bt-current");
+        if (data.connected && data.device) {
+          el.innerHTML = '<span class="bt-connected">Connected: ' + data.device.name + '</span>';
+        } else {
+          el.innerHTML = '<span class="bt-none">No speaker connected</span>';
+        }
+      })
+      .catch(function () {
+        $("#bt-current").innerHTML = '<span class="bt-none">Bluetooth unavailable</span>';
+      });
+  }
+
+  // Scan
+  $("#btn-bt-scan").addEventListener("click", function () {
+    var statusEl = $("#bt-status");
+    statusEl.textContent = "Scanning... (~8 seconds)";
+    statusEl.className = "status-msg";
+    $("#btn-bt-scan").disabled = true;
+    $("#bt-devices").innerHTML = "";
+
+    json("POST", "/api/bluetooth/scan", {}).then(function (devices) {
+      $("#btn-bt-scan").disabled = false;
+      statusEl.textContent = devices.length + " device(s) found";
+      statusEl.className = "status-msg";
+      renderBtDevices(devices);
+    }).catch(function () {
+      $("#btn-bt-scan").disabled = false;
+      statusEl.textContent = "Scan failed";
+      statusEl.className = "status-msg err";
+    });
+  });
+
+  function renderBtDevices(devices) {
+    var el = $("#bt-devices");
+    if (devices.length === 0) {
+      el.innerHTML = "";
+      return;
+    }
+    var html = "";
+    for (var i = 0; i < devices.length; i++) {
+      var d = devices[i];
+      var btnText, btnClass;
+      if (d.connected) {
+        btnText = "Disconnect";
+        btnClass = "btn btn-stop";
+      } else {
+        btnText = "Connect";
+        btnClass = "btn btn-test";
+      }
+      html += '<div class="bt-device">' +
+        '<div class="bt-info">' +
+          '<div class="bt-name">' + d.name + '</div>' +
+          '<div class="bt-mac">' + d.mac +
+            (d.connected ? ' <span class="bt-badge">Connected</span>' : '') +
+            (d.paired && !d.connected ? ' <span class="bt-badge" style="color:var(--text-secondary)">Paired</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<button class="' + btnClass + '" data-mac="' + d.mac + '" data-action="' + (d.connected ? 'disconnect' : 'connect') + '">' + btnText + '</button>' +
+      '</div>';
+    }
+    el.innerHTML = html;
+
+    var buttons = el.querySelectorAll("button");
+    for (var j = 0; j < buttons.length; j++) {
+      buttons[j].addEventListener("click", function () {
+        var mac = this.getAttribute("data-mac");
+        var action = this.getAttribute("data-action");
+        btAction(mac, action);
+      });
+    }
+  }
+
+  function btAction(mac, action) {
+    var statusEl = $("#bt-status");
+    statusEl.textContent = (action === "connect" ? "Connecting..." : "Disconnecting...");
+    statusEl.className = "status-msg";
+
+    json("POST", "/api/bluetooth/" + action, { mac: mac }).then(function (data) {
+      if (data.ok) {
+        statusEl.textContent = (action === "connect" ? "Connected!" : "Disconnected");
+        statusEl.className = "status-msg ok";
+      } else {
+        statusEl.textContent = data.error || "Failed";
+        statusEl.className = "status-msg err";
+      }
+      loadBtStatus();
+      // Refresh device list
+      fetch("/api/bluetooth/devices")
+        .then(function (r) { return r.json(); })
+        .then(function (devices) { renderBtDevices(devices); });
+    });
+  }
 
 })();
