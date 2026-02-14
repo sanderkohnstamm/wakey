@@ -23,28 +23,23 @@
       </div>
     </div>
 
-    <div id="home-alarms" class="home-alarms"></div>
-
-    <div class="main-buttons">
-      <button class="btn btn-settings" id="btn-go-settings">Alarms</button>
-      <button class="btn btn-settings" id="btn-go-configure">Configure</button>
-    </div>
-  </div>
-
-  <!-- Settings View (alarm list) -->
-  <div id="view-settings" class="view">
-    <div class="view-header">
-      <button class="btn btn-back" id="btn-back-main">&larr;</button>
-      <h2>Alarms</h2>
+    <div class="home-alarms-header">
+      <span class="home-alarms-title">Alarms</span>
       <button class="btn btn-add" id="btn-add-alarm">+</button>
     </div>
-    <div id="alarm-list" class="alarm-list"></div>
+    <div id="home-alarms" class="home-alarms"></div>
+
+    <div class="nav-bar">
+      <button class="btn btn-nav" id="btn-go-radio">Radio</button>
+      <button class="btn btn-nav" id="btn-go-hue">Lights</button>
+      <button class="btn btn-nav" id="btn-go-bluetooth">Settings</button>
+    </div>
   </div>
 
   <!-- Edit Alarm View -->
   <div id="view-edit" class="view">
     <div class="view-header">
-      <button class="btn btn-back" id="btn-back-settings">&larr;</button>
+      <button class="btn btn-back" id="btn-back-main">&larr;</button>
       <h2 id="edit-title">Edit Alarm</h2>
       <button class="btn btn-delete" id="btn-delete-alarm">Delete</button>
     </div>
@@ -115,46 +110,46 @@
     </form>
   </div>
 
-  <!-- Configure View -->
-  <div id="view-configure" class="view">
+  <!-- Radio View -->
+  <div id="view-radio" class="view">
     <div class="view-header">
-      <button class="btn btn-back" id="btn-back-main-cfg">&larr;</button>
-      <h2>Configure</h2>
+      <button class="btn btn-back" id="btn-back-main-radio">&larr;</button>
+      <h2>Radio</h2>
       <div></div>
     </div>
 
-    <!-- Bluetooth Speaker -->
-    <section class="config-section">
-      <h3>Bluetooth Speaker</h3>
-      <div id="bt-current" class="bt-current"></div>
-      <div class="config-actions">
-        <button class="btn btn-test" id="btn-bt-scan">Scan for Devices</button>
-      </div>
-      <div id="bt-status" class="status-msg"></div>
-      <div id="bt-devices" class="bt-device-list"></div>
-    </section>
+    <div class="radio-player">
+      <div class="radio-now-playing" id="radio-now-playing">Not playing</div>
 
-    <!-- Radio Test -->
-    <section class="config-section">
-      <h3>Radio</h3>
       <div class="form-group">
-        <label for="cfg-station">Station</label>
-        <select id="cfg-station"></select>
+        <label for="radio-station">Station</label>
+        <select id="radio-station"></select>
       </div>
+
       <div class="form-group">
-        <label for="cfg-volume">Volume <span id="cfg-volume-val">50</span>%</label>
-        <input type="range" id="cfg-volume" min="10" max="100" value="50">
+        <label for="radio-volume">Volume <span id="radio-volume-val">50</span>%</label>
+        <input type="range" id="radio-volume" min="10" max="100" value="50">
       </div>
-      <div class="config-actions">
-        <button class="btn btn-test" id="btn-test-radio">Test Radio</button>
-        <button class="btn btn-stop" id="btn-stop-radio">Stop</button>
+
+      <div class="radio-controls">
+        <button class="btn btn-play" id="btn-radio-play">Play</button>
+        <button class="btn btn-stop" id="btn-radio-stop">Stop</button>
       </div>
+
       <div id="radio-status" class="status-msg"></div>
-    </section>
+    </div>
+  </div>
 
-    <!-- Hue Connection -->
+  <!-- Hue / Lights View -->
+  <div id="view-hue" class="view">
+    <div class="view-header">
+      <button class="btn btn-back" id="btn-back-main-hue">&larr;</button>
+      <h2>Lights</h2>
+      <div></div>
+    </div>
+
     <section class="config-section">
-      <h3>Philips Hue</h3>
+      <h3>Bridge Connection</h3>
       <div class="form-group">
         <label for="cfg-hue-ip">Bridge IP</label>
         <input type="text" id="cfg-hue-ip" placeholder="192.168.1.x">
@@ -172,8 +167,11 @@
         <button class="btn btn-small" id="btn-test-hue">Test Connection</button>
       </div>
       <div id="hue-status" class="status-msg"></div>
+    </section>
 
-      <div class="form-group" style="margin-top: 16px">
+    <section class="config-section">
+      <h3>Rooms</h3>
+      <div class="form-group">
         <label for="cfg-hue-room">Room</label>
         <select id="cfg-hue-room"><option value="">-- save connection first --</option></select>
       </div>
@@ -182,6 +180,25 @@
         <button class="btn btn-test" id="btn-test-light">Test Light</button>
       </div>
       <div id="light-status" class="status-msg"></div>
+    </section>
+  </div>
+
+  <!-- Bluetooth / Settings View -->
+  <div id="view-bluetooth" class="view">
+    <div class="view-header">
+      <button class="btn btn-back" id="btn-back-main-bt">&larr;</button>
+      <h2>Settings</h2>
+      <div></div>
+    </div>
+
+    <section class="config-section">
+      <h3>Bluetooth Speaker</h3>
+      <div id="bt-current" class="bt-current"></div>
+      <div class="config-actions">
+        <button class="btn btn-test" id="btn-bt-scan">Scan for Devices</button>
+      </div>
+      <div id="bt-status" class="status-msg"></div>
+      <div id="bt-devices" class="bt-device-list"></div>
     </section>
   </div>
 

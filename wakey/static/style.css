@@ -50,7 +50,7 @@ body {
   font-weight: 300;
   text-align: center;
   letter-spacing: 2px;
-  margin-top: 12vh;
+  margin-top: 8vh;
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
@@ -68,13 +68,6 @@ body {
   font-size: 0.85rem;
   margin-top: 14px;
   min-height: 1.4em;
-}
-
-.main-buttons {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  margin-top: 32px;
 }
 
 /* ── Alarm active panel ── */
@@ -129,10 +122,12 @@ body {
   font-size: 1.1rem;
   padding: 14px 28px;
 }
-.btn-settings {
+.btn-nav {
   background: var(--bg-raised);
   border: 1px solid var(--border);
-  padding: 12px 28px;
+  padding: 12px 0;
+  flex: 1;
+  font-size: 0.85rem;
 }
 .btn-save {
   width: 100%;
@@ -152,9 +147,9 @@ body {
 .btn-add {
   background: var(--primary);
   color: #fff;
-  font-size: 1.3rem;
-  width: 36px;
-  height: 36px;
+  font-size: 1.1rem;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   padding: 0;
   display: flex;
@@ -177,6 +172,14 @@ body {
   color: #fff;
   font-weight: 600;
 }
+.btn-play {
+  background: var(--success);
+  color: #fff;
+  font-weight: 600;
+  flex: 1;
+  padding: 14px;
+  font-size: 1rem;
+}
 .btn-stop {
   background: var(--danger-dim);
   color: var(--danger);
@@ -196,48 +199,96 @@ body {
   font-weight: 600;
 }
 
-/* ── Alarm list ── */
+/* ── Home alarms header ── */
 
-.alarm-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.alarm-card {
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
+.home-alarms-header {
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: space-between;
+  max-width: 360px;
+  margin: 28px auto 0;
+  padding: 0 2px;
+}
+.home-alarms-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+/* ── Nav bar ── */
+
+.nav-bar {
+  display: flex;
+  gap: 8px;
+  margin-top: 28px;
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ── Home alarm list ── */
+
+.home-alarms {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.home-alarm {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   cursor: pointer;
   transition: background 0.15s;
 }
-.alarm-card:hover {
+.home-alarm:active {
   background: var(--bg-input);
 }
-.alarm-card .time {
-  font-size: 1.8rem;
-  font-weight: 300;
-  min-width: 90px;
-  font-variant-numeric: tabular-nums;
-}
-.alarm-card .info {
-  flex: 1;
-}
-.alarm-card .label {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-.alarm-card .days-text {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  margin-top: 2px;
-}
-.alarm-card.disabled .time,
-.alarm-card.disabled .info {
+.home-alarm.disabled .ha-time,
+.home-alarm.disabled .ha-info {
   opacity: 0.35;
+}
+.home-alarm .ha-time {
+  font-size: 1.2rem;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  min-width: 55px;
+}
+.home-alarm .ha-info {
+  flex: 1;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.home-alarm .toggle {
+  width: 40px;
+  height: 24px;
+}
+.home-alarm .toggle .slider::before {
+  width: 18px;
+  height: 18px;
+}
+.home-alarm .toggle input:checked + .slider::before {
+  -webkit-transform: translateX(16px);
+  transform: translateX(16px);
+}
+
+.home-alarms-empty {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  padding: 20px 0;
 }
 
 /* ── Toggle switch ── */
@@ -399,6 +450,37 @@ input[type="checkbox"] {
   font-weight: 600;
 }
 
+/* ── Radio player ── */
+
+.radio-player {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.radio-now-playing {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: 24px 0;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.radio-now-playing.active {
+  color: var(--success);
+}
+.radio-controls {
+  display: flex;
+  gap: 10px;
+}
+.radio-controls .btn-stop {
+  flex: 0 0 auto;
+  padding: 14px 24px;
+  font-size: 1rem;
+}
+
 /* ── Bluetooth ── */
 
 .bt-current {
@@ -453,7 +535,7 @@ input[type="checkbox"] {
   font-weight: 500;
 }
 
-/* ── Configure page ── */
+/* ── Config sections ── */
 
 .config-section {
   background: var(--bg-raised);
@@ -495,70 +577,11 @@ input[type="checkbox"] {
   color: var(--danger);
 }
 
-/* ── Home alarm list ── */
-
-.home-alarms {
-  margin-top: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-width: 360px;
-  margin-left: auto;
-  margin-right: auto;
-}
-.home-alarm {
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.home-alarm.disabled {
-  opacity: 0.35;
-}
-.home-alarm .ha-time {
-  font-size: 1.2rem;
-  font-weight: 300;
-  font-variant-numeric: tabular-nums;
-  min-width: 55px;
-}
-.home-alarm .ha-info {
-  flex: 1;
-  font-size: 0.72rem;
-  color: var(--text-secondary);
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.home-alarm .toggle {
-  width: 40px;
-  height: 24px;
-}
-.home-alarm .toggle .slider::before {
-  width: 18px;
-  height: 18px;
-}
-.home-alarm .toggle input:checked + .slider::before {
-  -webkit-transform: translateX(16px);
-  transform: translateX(16px);
-}
-
 .hint {
   color: var(--text-secondary);
   font-size: 0.75rem;
   margin-top: 8px;
   line-height: 1.4;
-}
-
-/* ── Empty state ── */
-
-.empty-state {
-  text-align: center;
-  color: var(--text-secondary);
-  padding: 48px 16px;
-  font-size: 0.95rem;
 }
 
 /* ── Responsive ── */

@@ -5,6 +5,7 @@
 
   var DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   var currentAlarmId = null;
+  var radioPlaying = false;
 
   // ── Helpers ──
 
@@ -23,6 +24,18 @@
     var opts = { method: method, headers: { "Content-Type": "application/json" } };
     if (body !== undefined) { opts.body = JSON.stringify(body); }
     return fetch(url, opts).then(function (r) { return r.json(); });
+  }
+
+  function daysText(days) {
+    if (days.length === 7) return "Every day";
+    if (days.length === 5 && days.indexOf(0) !== -1 && days.indexOf(1) !== -1 &&
+        days.indexOf(2) !== -1 && days.indexOf(3) !== -1 && days.indexOf(4) !== -1) {
+      return "Weekdays";
+    }
+    if (days.length === 2 && days.indexOf(5) !== -1 && days.indexOf(6) !== -1) {
+      return "Weekends";
+    }
+    return days.map(function (d) { return DAY_NAMES[d]; }).join(", ");
   }
 
   // ── Clock ──
@@ -95,27 +108,16 @@
   function renderHomeAlarms(alarms) {
     var el = $("#home-alarms");
     if (alarms.length === 0) {
-      el.innerHTML = "";
+      el.innerHTML = '<div class="home-alarms-empty">No alarms yet</div>';
       return;
     }
     var html = "";
     for (var i = 0; i < alarms.length; i++) {
       var a = alarms[i];
-      var daysStr;
-      if (a.days.length === 7) {
-        daysStr = "Every day";
-      } else if (a.days.length === 5 && a.days.indexOf(0) !== -1 && a.days.indexOf(1) !== -1 &&
-                 a.days.indexOf(2) !== -1 && a.days.indexOf(3) !== -1 && a.days.indexOf(4) !== -1) {
-        daysStr = "Weekdays";
-      } else if (a.days.length === 2 && a.days.indexOf(5) !== -1 && a.days.indexOf(6) !== -1) {
-        daysStr = "Weekends";
-      } else {
-        daysStr = a.days.map(function (d) { return DAY_NAMES[d]; }).join(", ");
-      }
       var label = a.label ? a.label + " \u00b7 " : "";
-      html += '<div class="home-alarm ' + (a.enabled ? "" : "disabled") + '">' +
+      html += '<div class="home-alarm ' + (a.enabled ? "" : "disabled") + '" data-id="' + a.id + '">' +
         '<div class="ha-time">' + a.time + '</div>' +
-        '<div class="ha-info">' + label + daysStr + '</div>' +
+        '<div class="ha-info">' + label + daysText(a.days) + '</div>' +
         '<label class="toggle" onclick="event.stopPropagation()">' +
           '<input type="checkbox" ' + (a.enabled ? "checked" : "") + ' data-alarm-id="' + a.id + '">' +
           '<span class="slider"></span>' +
@@ -124,6 +126,7 @@
     }
     el.innerHTML = html;
 
+    // Toggle handlers
     var toggles = el.querySelectorAll(".toggle input");
     for (var j = 0; j < toggles.length; j++) {
       toggles[j].addEventListener("change", function () {
@@ -131,6 +134,14 @@
         json("PUT", "/api/alarms/" + id, { enabled: this.checked }).then(function () {
           loadHomeAlarms();
         });
+      });
+    }
+
+    // Click to edit
+    var cards = el.querySelectorAll(".home-alarm");
+    for (var k = 0; k < cards.length; k++) {
+      cards[k].addEventListener("click", function () {
+        openEditView(this.getAttribute("data-id"));
       });
     }
   }
@@ -149,83 +160,25 @@
 
   // ── Navigation ──
 
-  $("#btn-go-settings").addEventListener("click", function () {
-    loadAlarmList();
-    showView("settings");
+  $("#btn-go-radio").addEventListener("click", function () {
+    loadRadioView();
+    showView("radio");
   });
 
-  $("#btn-go-configure").addEventListener("click", function () {
-    loadConfigureView();
-    showView("configure");
+  $("#btn-go-hue").addEventListener("click", function () {
+    loadHueView();
+    showView("hue");
+  });
+
+  $("#btn-go-bluetooth").addEventListener("click", function () {
+    loadBluetoothView();
+    showView("bluetooth");
   });
 
   $("#btn-back-main").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
-  $("#btn-back-main-cfg").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
-
-  $("#btn-back-settings").addEventListener("click", function () {
-    loadAlarmList();
-    showView("settings");
-  });
-
-  // ── Alarm list ──
-
-  function loadAlarmList() {
-    fetch("/api/alarms")
-      .then(function (r) { return r.json(); })
-      .then(function (alarms) { renderAlarmList(alarms); });
-  }
-
-  function renderAlarmList(alarms) {
-    var list = $("#alarm-list");
-
-    if (alarms.length === 0) {
-      list.innerHTML = '<div class="empty-state">No alarms yet. Tap + to add one.</div>';
-      return;
-    }
-
-    var html = "";
-    for (var i = 0; i < alarms.length; i++) {
-      var a = alarms[i];
-      var daysStr;
-      if (a.days.length === 7) {
-        daysStr = "Every day";
-      } else if (a.days.length === 5 && a.days.indexOf(0) !== -1 && a.days.indexOf(1) !== -1 &&
-                 a.days.indexOf(2) !== -1 && a.days.indexOf(3) !== -1 && a.days.indexOf(4) !== -1) {
-        daysStr = "Weekdays";
-      } else {
-        daysStr = a.days.map(function (d) { return DAY_NAMES[d]; }).join(", ");
-      }
-      html += '<div class="alarm-card ' + (a.enabled ? "" : "disabled") + '" data-id="' + a.id + '">' +
-        '<div class="time">' + a.time + '</div>' +
-        '<div class="info">' +
-          '<div class="label">' + (a.label || "") + '</div>' +
-          '<div class="days-text">' + daysStr + '</div>' +
-        '</div>' +
-        '<label class="toggle" onclick="event.stopPropagation()">' +
-          '<input type="checkbox" ' + (a.enabled ? "checked" : "") + ' data-alarm-id="' + a.id + '">' +
-          '<span class="slider"></span>' +
-        '</label>' +
-      '</div>';
-    }
-    list.innerHTML = html;
-
-    // Toggle handlers
-    var toggles = list.querySelectorAll(".toggle input");
-    for (var j = 0; j < toggles.length; j++) {
-      toggles[j].addEventListener("change", function () {
-        var id = this.getAttribute("data-alarm-id");
-        json("PUT", "/api/alarms/" + id, { enabled: this.checked });
-      });
-    }
-
-    // Click to edit
-    var cards = list.querySelectorAll(".alarm-card");
-    for (var k = 0; k < cards.length; k++) {
-      cards[k].addEventListener("click", function () {
-        openEditView(this.getAttribute("data-id"));
-      });
-    }
-  }
+  $("#btn-back-main-radio").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
+  $("#btn-back-main-hue").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
+  $("#btn-back-main-bt").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
 
   // ── Add alarm ──
 
@@ -393,8 +346,8 @@
     var url = currentAlarmId ? "/api/alarms/" + currentAlarmId : "/api/alarms";
 
     json(method, url, body).then(function () {
-      loadAlarmList();
-      showView("settings");
+      loadHomeAlarms();
+      showView("main");
     });
   });
 
@@ -404,71 +357,81 @@
     if (!currentAlarmId) return;
     if (!confirm("Delete this alarm?")) return;
     fetch("/api/alarms/" + currentAlarmId, { method: "DELETE" }).then(function () {
-      loadAlarmList();
-      showView("settings");
+      loadHomeAlarms();
+      showView("main");
     });
   });
 
   // ═══════════════════════════════════════
-  // ── Configure View ──
+  // ── Radio View ──
   // ═══════════════════════════════════════
 
-  function loadConfigureView() {
-    // Load stations into configure dropdown
-    loadStations($("#cfg-station"), null);
-
-    // Load saved Hue config
-    fetch("/api/config")
-      .then(function (r) { return r.json(); })
-      .then(function (cfg) {
-        $("#cfg-hue-ip").value = cfg.hue.bridge_ip || "";
-        $("#cfg-hue-user").value = cfg.hue.username || "";
-      });
-
-    // Load Bluetooth status
-    loadBtStatus();
-
-    $("#bt-status").textContent = "";
-    $("#bt-status").className = "status-msg";
+  function loadRadioView() {
+    loadStations($("#radio-station"), null);
     $("#radio-status").textContent = "";
     $("#radio-status").className = "status-msg";
-    $("#hue-status").textContent = "";
-    $("#hue-status").className = "status-msg";
-    $("#light-status").textContent = "";
-    $("#light-status").className = "status-msg";
   }
 
-  // Radio volume slider
-  $("#cfg-volume").addEventListener("input", function () {
-    $("#cfg-volume-val").textContent = this.value;
+  $("#radio-volume").addEventListener("input", function () {
+    $("#radio-volume-val").textContent = this.value;
   });
 
-  // Test radio
-  $("#btn-test-radio").addEventListener("click", function () {
-    var station = $("#cfg-station").value;
-    var volume = parseInt($("#cfg-volume").value);
+  $("#btn-radio-play").addEventListener("click", function () {
+    var station = $("#radio-station").value;
+    var volume = parseInt($("#radio-volume").value);
     var el = $("#radio-status");
+    var np = $("#radio-now-playing");
     el.textContent = "Starting...";
     el.className = "status-msg";
+    np.textContent = "Connecting...";
+    np.className = "radio-now-playing";
+
     json("POST", "/api/config/test-radio", { station: station, volume: volume }).then(function (data) {
       if (data.ok) {
-        el.textContent = "Playing " + data.station;
-        el.className = "status-msg ok";
+        radioPlaying = true;
+        var stationName = data.station || "Radio";
+        np.textContent = stationName;
+        np.className = "radio-now-playing active";
+        el.textContent = "";
+        el.className = "status-msg";
       } else {
+        radioPlaying = false;
+        np.textContent = "Not playing";
+        np.className = "radio-now-playing";
         el.textContent = data.error || "Failed to play";
         el.className = "status-msg err";
       }
     });
   });
 
-  // Stop radio
-  $("#btn-stop-radio").addEventListener("click", function () {
+  $("#btn-radio-stop").addEventListener("click", function () {
     json("POST", "/api/config/test-radio/stop", {}).then(function () {
+      radioPlaying = false;
+      var np = $("#radio-now-playing");
+      np.textContent = "Not playing";
+      np.className = "radio-now-playing";
       var el = $("#radio-status");
-      el.textContent = "Stopped";
+      el.textContent = "";
       el.className = "status-msg";
     });
   });
+
+  // ═══════════════════════════════════════
+  // ── Hue / Lights View ──
+  // ═══════════════════════════════════════
+
+  function loadHueView() {
+    fetch("/api/config")
+      .then(function (r) { return r.json(); })
+      .then(function (cfg) {
+        $("#cfg-hue-ip").value = cfg.hue.bridge_ip || "";
+        $("#cfg-hue-user").value = cfg.hue.username || "";
+      });
+    $("#hue-status").textContent = "";
+    $("#hue-status").className = "status-msg";
+    $("#light-status").textContent = "";
+    $("#light-status").className = "status-msg";
+  }
 
   // Generate Hue API key
   $("#btn-generate-key").addEventListener("click", function () {
@@ -512,7 +475,6 @@
 
   // Test Hue connection
   $("#btn-test-hue").addEventListener("click", function () {
-    // Save first, then test
     var body = {
       hue: {
         bridge_ip: $("#cfg-hue-ip").value.trim(),
@@ -526,7 +488,6 @@
       if (data.connected) {
         el.textContent = "Connected to " + data.name;
         el.className = "status-msg ok";
-        // Also load rooms
         loadCfgRooms(null);
       } else {
         el.textContent = "Failed: " + (data.error || "Unknown error");
@@ -535,7 +496,7 @@
     });
   });
 
-  // Load rooms in configure view
+  // Load rooms
   function loadCfgRooms(selectedId) {
     var sel = $("#cfg-hue-room");
     sel.innerHTML = '<option value="">Loading...</option>';
@@ -583,8 +544,14 @@
   });
 
   // ═══════════════════════════════════════
-  // ── Bluetooth ──
+  // ── Bluetooth View ──
   // ═══════════════════════════════════════
+
+  function loadBluetoothView() {
+    loadBtStatus();
+    $("#bt-status").textContent = "";
+    $("#bt-status").className = "status-msg";
+  }
 
   function loadBtStatus() {
     fetch("/api/bluetooth/status")
