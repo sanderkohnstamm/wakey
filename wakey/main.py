@@ -18,6 +18,7 @@ from .routes import alarms as alarms_router
 from .routes import bluetooth as bluetooth_router
 from .routes import config as config_router
 from .routes import hue as hue_router
+from .routes import spotify as spotify_router
 from .routes import status as status_router
 
 logging.basicConfig(
@@ -42,6 +43,7 @@ app.include_router(alarms_router.router)
 app.include_router(bluetooth_router.router)
 app.include_router(config_router.router)
 app.include_router(hue_router.router)
+app.include_router(spotify_router.router)
 app.include_router(status_router.router)
 
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")

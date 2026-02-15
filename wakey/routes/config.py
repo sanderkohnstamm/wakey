@@ -23,6 +23,10 @@ async def update_config(body: dict) -> dict:
         hue_data = cfg.hue.model_dump()
         hue_data.update(body["hue"])
         cfg.hue = cfg.hue.model_validate(hue_data)
+    if "spotify" in body:
+        sp_data = cfg.spotify.model_dump()
+        sp_data.update(body["spotify"])
+        cfg.spotify = cfg.spotify.model_validate(sp_data)
     save_config(cfg)
     return cfg.model_dump()
 

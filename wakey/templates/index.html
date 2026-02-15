@@ -30,7 +30,7 @@
     <div id="home-alarms" class="home-alarms"></div>
 
     <div class="nav-bar">
-      <button class="btn btn-nav" id="btn-go-radio">Radio</button>
+      <button class="btn btn-nav" id="btn-go-music">Music</button>
       <button class="btn btn-nav" id="btn-go-hue">Lights</button>
       <button class="btn btn-nav" id="btn-go-settings">Settings</button>
     </div>
@@ -110,34 +110,77 @@
     </form>
   </div>
 
-  <!-- Radio View -->
-  <div id="view-radio" class="view">
+  <!-- Music View -->
+  <div id="view-music" class="view">
     <div class="view-header">
-      <button class="btn btn-back" id="btn-back-main-radio">&larr;</button>
-      <h2>Radio</h2>
+      <button class="btn btn-back" id="btn-back-main-music">&larr;</button>
+      <h2>Music</h2>
       <div></div>
     </div>
 
-    <div class="radio-player">
-      <div class="radio-display">
-        <div class="radio-indicator" id="radio-indicator"></div>
-        <div class="radio-now-playing" id="radio-now-playing">Select a station</div>
-      </div>
-
-      <div class="radio-station-list" id="radio-station-list"></div>
-
-      <div class="form-group">
-        <label for="radio-volume">Volume <span id="radio-volume-val">50</span>%</label>
-        <input type="range" id="radio-volume" min="10" max="100" value="50">
-      </div>
-
-      <div class="radio-controls">
-        <button class="btn btn-play" id="btn-radio-play">Play</button>
-        <button class="btn btn-stop" id="btn-radio-stop">Stop</button>
-      </div>
-
-      <div id="radio-status" class="status-msg"></div>
+    <!-- Music sub-tabs -->
+    <div class="music-tabs">
+      <button class="music-tab active" data-tab="radio">Radio</button>
+      <button class="music-tab" data-tab="spotify">Spotify</button>
     </div>
+
+    <!-- Radio sub-panel -->
+    <div id="music-radio" class="music-panel active">
+      <div class="radio-player">
+        <div class="radio-display">
+          <div class="radio-indicator" id="radio-indicator"></div>
+          <div class="radio-now-playing" id="radio-now-playing">Select a station</div>
+        </div>
+
+        <div class="radio-station-list" id="radio-station-list"></div>
+
+        <div class="radio-controls">
+          <button class="btn btn-play" id="btn-radio-play">Play</button>
+          <button class="btn btn-stop" id="btn-radio-stop">Stop</button>
+        </div>
+
+        <div id="radio-status" class="status-msg"></div>
+      </div>
+    </div>
+
+    <!-- Spotify sub-panel -->
+    <div id="music-spotify" class="music-panel">
+      <div id="spotify-not-connected">
+        <div id="spotify-not-configured" class="hue-notice" style="display:none">
+          <p>Spotify not configured.</p>
+          <button class="btn btn-small" id="btn-goto-spotify-settings">Go to Settings</button>
+        </div>
+        <div id="spotify-login-panel" class="spotify-login-panel" style="display:none">
+          <button class="btn btn-spotify" id="btn-spotify-login">Connect Spotify</button>
+        </div>
+      </div>
+
+      <div id="spotify-connected" style="display:none">
+        <!-- Now playing -->
+        <div class="spotify-now-playing" id="spotify-now-playing">
+          <div class="spotify-track-info">
+            <div class="spotify-track" id="sp-track">Not playing</div>
+            <div class="spotify-artist" id="sp-artist"></div>
+          </div>
+        </div>
+
+        <div class="spotify-controls">
+          <button class="btn btn-small" id="btn-sp-prev">&laquo;</button>
+          <button class="btn btn-play" id="btn-sp-play">Play</button>
+          <button class="btn btn-small" id="btn-sp-next">&raquo;</button>
+        </div>
+
+        <div class="spotify-section-header">Playlists</div>
+        <div id="spotify-playlists" class="spotify-playlists"></div>
+
+        <div class="spotify-disconnect">
+          <button class="btn btn-small" id="btn-spotify-disconnect">Disconnect Spotify</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Speaker volumes (shared across tabs) -->
+    <div id="music-bt-volumes" class="music-bt-volumes"></div>
   </div>
 
   <!-- Lights View -->
@@ -208,6 +251,24 @@
         <button class="btn btn-small" id="btn-test-hue">Test Connection</button>
       </div>
       <div id="hue-status" class="status-msg"></div>
+    </section>
+
+    <!-- Spotify -->
+    <section class="config-section">
+      <h3>Spotify</h3>
+      <div class="form-group">
+        <label for="cfg-spotify-id">Client ID</label>
+        <input type="text" id="cfg-spotify-id" placeholder="From Spotify Developer Dashboard">
+      </div>
+      <div class="form-group">
+        <label for="cfg-spotify-secret">Client Secret</label>
+        <input type="text" id="cfg-spotify-secret" placeholder="From Spotify Developer Dashboard">
+      </div>
+      <div class="config-actions">
+        <button class="btn btn-save" id="btn-save-spotify">Save</button>
+      </div>
+      <p class="hint">Create an app at developer.spotify.com. Add<br><code id="spotify-redirect-hint"></code><br>as redirect URI.</p>
+      <div id="spotify-status" class="status-msg"></div>
     </section>
   </div>
 

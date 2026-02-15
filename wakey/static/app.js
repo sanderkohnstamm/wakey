@@ -8,6 +8,7 @@
   var radioPlaying = false;
   var selectedStation = null;
   var stationsCache = null;
+  var spotifyPollingTimer = null;
 
   // ── Helpers ──
 
@@ -160,9 +161,9 @@
 
   // ── Navigation ──
 
-  $("#btn-go-radio").addEventListener("click", function () {
-    loadRadioView();
-    showView("radio");
+  $("#btn-go-music").addEventListener("click", function () {
+    loadMusicView();
+    showView("music");
   });
 
   $("#btn-go-hue").addEventListener("click", function () {
@@ -176,7 +177,11 @@
   });
 
   $("#btn-back-main").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
-  $("#btn-back-main-radio").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
+  $("#btn-back-main-music").addEventListener("click", function () {
+    stopSpotifyPolling();
+    loadHomeAlarms();
+    showView("main");
+  });
   $("#btn-back-main-hue").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
   $("#btn-back-main-settings").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
 
@@ -362,15 +367,47 @@
   });
 
   // ═══════════════════════════════════════
-  // ── Radio View ──
+  // ── Music View ──
   // ═══════════════════════════════════════
+
+  // Music sub-tabs
+  var musicTabs = $$(".music-tab");
+  for (var mt = 0; mt < musicTabs.length; mt++) {
+    musicTabs[mt].addEventListener("click", function () {
+      var tab = this.getAttribute("data-tab");
+      var allTabs = $$(".music-tab");
+      for (var i = 0; i < allTabs.length; i++) {
+        allTabs[i].classList.toggle("active", allTabs[i] === this);
+      }
+      var allPanels = $$(".music-panel");
+      for (var j = 0; j < allPanels.length; j++) {
+        allPanels[j].classList.toggle("active", allPanels[j].id === "music-" + tab);
+      }
+      if (tab === "spotify") {
+        loadSpotifyPanel();
+      }
+    });
+  }
+
+  function loadMusicView() {
+    // Load radio
+    loadRadioView();
+    // Load BT volumes
+    loadMusicBtVolumes();
+    // Check active tab
+    var activeTab = $(".music-tab.active");
+    if (activeTab && activeTab.getAttribute("data-tab") === "spotify") {
+      loadSpotifyPanel();
+    }
+  }
+
+  // ── Radio ──
 
   function loadRadioView() {
     var el = $("#radio-status");
     el.textContent = "";
     el.className = "status-msg";
 
-    // Check if already playing
     fetch("/api/config/test-radio/status")
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -385,7 +422,6 @@
       })
       .catch(function () {});
 
-    // Load station buttons
     fetch("/api/stations")
       .then(function (r) { return r.json(); })
       .then(function (stations) {
@@ -416,13 +452,10 @@
 
   function selectStation(id, name) {
     selectedStation = name;
-    // Update active state
     var btns = $$("#radio-station-list .radio-station-btn");
     for (var i = 0; i < btns.length; i++) {
       btns[i].classList.toggle("active", btns[i].getAttribute("data-id") === id);
     }
-
-    // If playing, switch station immediately
     if (radioPlaying) {
       playStation(id, name);
     } else {
@@ -432,7 +465,7 @@
   }
 
   function playStation(id, name) {
-    var volume = parseInt($("#radio-volume").value);
+    var volume = 50; // default, BT volume is per-device now
     var np = $("#radio-now-playing");
     var indicator = $("#radio-indicator");
     np.textContent = "Connecting...";
@@ -459,16 +492,7 @@
     });
   }
 
-  $("#radio-volume").addEventListener("input", function () {
-    $("#radio-volume-val").textContent = this.value;
-    // Live volume update while playing
-    if (radioPlaying) {
-      json("POST", "/api/config/test-radio/volume", { volume: parseInt(this.value) });
-    }
-  });
-
   $("#btn-radio-play").addEventListener("click", function () {
-    // Find selected station
     var activeBtn = $("#radio-station-list .radio-station-btn.active");
     var id, name;
     if (activeBtn) {
@@ -493,11 +517,232 @@
       $("#radio-indicator").className = "radio-indicator";
       $("#radio-status").textContent = "";
       $("#radio-status").className = "status-msg";
-      // Deselect station buttons
       var btns = $$("#radio-station-list .radio-station-btn");
       for (var i = 0; i < btns.length; i++) {
         btns[i].classList.remove("active");
       }
+    });
+  });
+
+  // ── Music BT Volume Sliders ──
+
+  function loadMusicBtVolumes() {
+    var el = $("#music-bt-volumes");
+    fetch("/api/bluetooth/status")
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var devices = data.devices || [];
+        if (devices.length === 0) {
+          el.innerHTML = "";
+          return;
+        }
+        var html = '<div class="music-vol-header">Speaker Volume</div>';
+        for (var i = 0; i < devices.length; i++) {
+          var d = devices[i];
+          html += '<div class="music-vol-row">' +
+            '<span class="music-vol-name">' + d.name + '</span>' +
+            '<span class="music-vol-val" data-mac="' + d.mac + '">--</span>%' +
+            '<input type="range" min="0" max="100" value="50" class="music-vol-slider" data-mac="' + d.mac + '">' +
+          '</div>';
+        }
+        el.innerHTML = html;
+
+        // Load actual volumes
+        fetch("/api/bluetooth/volumes")
+          .then(function (r) { return r.json(); })
+          .then(function (vols) {
+            for (var i = 0; i < vols.length; i++) {
+              var v = vols[i];
+              var slider = el.querySelector('.music-vol-slider[data-mac="' + v.mac + '"]');
+              var valEl = el.querySelector('.music-vol-val[data-mac="' + v.mac + '"]');
+              if (slider) slider.value = v.volume;
+              if (valEl) valEl.textContent = v.volume;
+            }
+            // Attach events
+            var sliders = el.querySelectorAll(".music-vol-slider");
+            for (var j = 0; j < sliders.length; j++) {
+              sliders[j].addEventListener("input", function () {
+                var mac = this.getAttribute("data-mac");
+                var valEl = el.querySelector('.music-vol-val[data-mac="' + mac + '"]');
+                if (valEl) valEl.textContent = this.value;
+              });
+              sliders[j].addEventListener("change", function () {
+                var mac = this.getAttribute("data-mac");
+                json("POST", "/api/bluetooth/volume", { mac: mac, volume: parseInt(this.value) });
+              });
+            }
+          });
+      })
+      .catch(function () {
+        el.innerHTML = "";
+      });
+  }
+
+  // ═══════════════════════════════════════
+  // ── Spotify ──
+  // ═══════════════════════════════════════
+
+  function loadSpotifyPanel() {
+    // Check config first
+    fetch("/api/config")
+      .then(function (r) { return r.json(); })
+      .then(function (cfg) {
+        if (!cfg.spotify || !cfg.spotify.client_id) {
+          $("#spotify-not-configured").style.display = "";
+          $("#spotify-login-panel").style.display = "none";
+          $("#spotify-connected").style.display = "none";
+          return;
+        }
+        // Config exists, check if connected
+        return fetch("/api/spotify/status")
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.connected) {
+              $("#spotify-not-connected").style.display = "none";
+              $("#spotify-connected").style.display = "";
+              loadSpotifyPlaylists();
+              pollSpotifyPlayback();
+              startSpotifyPolling();
+            } else {
+              $("#spotify-not-configured").style.display = "none";
+              $("#spotify-login-panel").style.display = "";
+              $("#spotify-connected").style.display = "none";
+            }
+          });
+      })
+      .catch(function () {});
+  }
+
+  function startSpotifyPolling() {
+    stopSpotifyPolling();
+    spotifyPollingTimer = setInterval(pollSpotifyPlayback, 3000);
+  }
+
+  function stopSpotifyPolling() {
+    if (spotifyPollingTimer) {
+      clearInterval(spotifyPollingTimer);
+      spotifyPollingTimer = null;
+    }
+  }
+
+  // Go to settings from spotify panel
+  $("#btn-goto-spotify-settings").addEventListener("click", function () {
+    loadSettingsView();
+    showView("settings");
+  });
+
+  // Login
+  $("#btn-spotify-login").addEventListener("click", function () {
+    fetch("/api/spotify/auth-url")
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.ok && data.url) {
+          window.location.href = data.url;
+        }
+      });
+  });
+
+  // Disconnect
+  $("#btn-spotify-disconnect").addEventListener("click", function () {
+    json("POST", "/api/spotify/disconnect", {}).then(function () {
+      stopSpotifyPolling();
+      $("#spotify-not-connected").style.display = "";
+      $("#spotify-login-panel").style.display = "";
+      $("#spotify-connected").style.display = "none";
+    });
+  });
+
+  // Playlists
+  function loadSpotifyPlaylists() {
+    var el = $("#spotify-playlists");
+    el.innerHTML = '<div class="home-alarms-empty">Loading playlists...</div>';
+
+    fetch("/api/spotify/playlists")
+      .then(function (r) { return r.json(); })
+      .then(function (playlists) {
+        if (playlists.length === 0) {
+          el.innerHTML = '<div class="home-alarms-empty">No playlists found</div>';
+          return;
+        }
+        var html = "";
+        for (var i = 0; i < playlists.length; i++) {
+          var p = playlists[i];
+          html += '<button class="spotify-playlist-btn" data-uri="' + p.uri + '">' +
+            '<span class="sp-pl-name">' + p.name + '</span>' +
+            '<span class="sp-pl-tracks">' + p.tracks + ' tracks</span>' +
+          '</button>';
+        }
+        el.innerHTML = html;
+
+        var btns = el.querySelectorAll(".spotify-playlist-btn");
+        for (var j = 0; j < btns.length; j++) {
+          btns[j].addEventListener("click", function () {
+            var uri = this.getAttribute("data-uri");
+            // Highlight active
+            var all = el.querySelectorAll(".spotify-playlist-btn");
+            for (var k = 0; k < all.length; k++) {
+              all[k].classList.remove("active");
+            }
+            this.classList.add("active");
+            json("POST", "/api/spotify/play", { uri: uri }).then(function () {
+              setTimeout(pollSpotifyPlayback, 500);
+            });
+          });
+        }
+      })
+      .catch(function () {
+        el.innerHTML = '<div class="home-alarms-empty">Failed to load playlists</div>';
+      });
+  }
+
+  // Playback state
+  function pollSpotifyPlayback() {
+    fetch("/api/spotify/playback")
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var trackEl = $("#sp-track");
+        var artistEl = $("#sp-artist");
+        var playBtn = $("#btn-sp-play");
+
+        if (data.track) {
+          trackEl.textContent = data.track;
+          artistEl.textContent = data.artist || "";
+          playBtn.textContent = data.is_playing ? "Pause" : "Play";
+        } else {
+          trackEl.textContent = "Not playing";
+          artistEl.textContent = "";
+          playBtn.textContent = "Play";
+        }
+      })
+      .catch(function () {});
+  }
+
+  // Play/Pause
+  $("#btn-sp-play").addEventListener("click", function () {
+    var btn = this;
+    if (btn.textContent === "Pause") {
+      json("POST", "/api/spotify/pause", {}).then(function () {
+        btn.textContent = "Play";
+        setTimeout(pollSpotifyPlayback, 300);
+      });
+    } else {
+      json("POST", "/api/spotify/play", {}).then(function () {
+        btn.textContent = "Pause";
+        setTimeout(pollSpotifyPlayback, 300);
+      });
+    }
+  });
+
+  // Skip
+  $("#btn-sp-prev").addEventListener("click", function () {
+    json("POST", "/api/spotify/previous", {}).then(function () {
+      setTimeout(pollSpotifyPlayback, 500);
+    });
+  });
+
+  $("#btn-sp-next").addEventListener("click", function () {
+    json("POST", "/api/spotify/next", {}).then(function () {
+      setTimeout(pollSpotifyPlayback, 500);
     });
   });
 
@@ -512,7 +757,6 @@
     $("#lights-status").className = "status-msg";
     $("#hue-scenes-panel").style.display = "none";
 
-    // Check if configured
     fetch("/api/hue/status")
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -555,7 +799,6 @@
     for (var i = 0; i < rooms.length; i++) {
       var r = rooms[i];
       var briPct = Math.round(r.bri / 254 * 100);
-      // Color temp: 153 (cool/6500K) to 500 (warm/2000K)
       html += '<div class="hue-room-card" data-room-id="' + r.id + '">' +
         '<div class="hue-room-header">' +
           '<span class="hue-room-name">' + r.name + '</span>' +
@@ -581,7 +824,6 @@
     }
     el.innerHTML = html;
 
-    // Room toggles
     var toggles = el.querySelectorAll(".hue-room-toggle");
     for (var j = 0; j < toggles.length; j++) {
       toggles[j].addEventListener("change", function () {
@@ -590,7 +832,6 @@
       });
     }
 
-    // Brightness sliders
     var briSliders = el.querySelectorAll(".hue-bri-slider");
     for (var k = 0; k < briSliders.length; k++) {
       briSliders[k].addEventListener("input", function () {
@@ -602,13 +843,11 @@
         var rid = this.getAttribute("data-room-id");
         var bri = Math.round(parseInt(this.value) / 100 * 254);
         json("PUT", "/api/hue/rooms/" + rid + "/state", { on: true, bri: bri });
-        // Also check the toggle
         var toggle = el.querySelector('.hue-room-toggle[data-room-id="' + rid + '"]');
         if (toggle) toggle.checked = true;
       });
     }
 
-    // Color temp sliders
     var ctSliders = el.querySelectorAll(".hue-ct-slider");
     for (var m = 0; m < ctSliders.length; m++) {
       ctSliders[m].addEventListener("change", function () {
@@ -620,7 +859,6 @@
       });
     }
 
-    // Scene buttons
     var sceneBtns = el.querySelectorAll(".hue-scenes-btn");
     for (var n = 0; n < sceneBtns.length; n++) {
       sceneBtns[n].addEventListener("click", function () {
@@ -660,7 +898,6 @@
             var rid = this.getAttribute("data-room-id");
             json("POST", "/api/hue/rooms/" + rid + "/scene", { scene_id: sid }).then(function (data) {
               if (data.ok) {
-                // Refresh room state after scene activation
                 setTimeout(loadHueRooms, 500);
               }
             });
@@ -678,20 +915,28 @@
   // ═══════════════════════════════════════
 
   function loadSettingsView() {
-    // Load BT status
     loadBtStatus();
     $("#bt-status").textContent = "";
     $("#bt-status").className = "status-msg";
 
-    // Load Hue config
     fetch("/api/config")
       .then(function (r) { return r.json(); })
       .then(function (cfg) {
         $("#cfg-hue-ip").value = cfg.hue.bridge_ip || "";
         $("#cfg-hue-user").value = cfg.hue.username || "";
+        $("#cfg-spotify-id").value = (cfg.spotify && cfg.spotify.client_id) || "";
+        $("#cfg-spotify-secret").value = (cfg.spotify && cfg.spotify.client_secret) || "";
       });
     $("#hue-status").textContent = "";
     $("#hue-status").className = "status-msg";
+    $("#spotify-status").textContent = "";
+    $("#spotify-status").className = "status-msg";
+
+    // Show redirect URI hint
+    var hint = $("#spotify-redirect-hint");
+    if (hint) {
+      hint.textContent = window.location.origin + "/api/spotify/callback";
+    }
   }
 
   // Generate Hue API key
@@ -755,8 +1000,23 @@
     });
   });
 
+  // Save Spotify config
+  $("#btn-save-spotify").addEventListener("click", function () {
+    var body = {
+      spotify: {
+        client_id: $("#cfg-spotify-id").value.trim(),
+        client_secret: $("#cfg-spotify-secret").value.trim()
+      }
+    };
+    json("PUT", "/api/config", body).then(function () {
+      var el = $("#spotify-status");
+      el.textContent = "Saved!";
+      el.className = "status-msg ok";
+    });
+  });
+
   // ═══════════════════════════════════════
-  // ── Bluetooth ──
+  // ── Bluetooth (Settings) ──
   // ═══════════════════════════════════════
 
   function loadBtStatus() {
@@ -798,7 +1058,6 @@
     }
     el.innerHTML = html;
 
-    // Disconnect buttons
     var disconnectBtns = el.querySelectorAll('[data-action="disconnect"]');
     for (var j = 0; j < disconnectBtns.length; j++) {
       disconnectBtns[j].addEventListener("click", function () {
@@ -806,7 +1065,6 @@
       });
     }
 
-    // Setup combined button
     var combBtn = document.getElementById("btn-setup-combined");
     if (combBtn) {
       combBtn.addEventListener("click", function () {
@@ -826,7 +1084,6 @@
       });
     }
 
-    // Load volumes
     loadBtVolumes();
   }
 
@@ -841,7 +1098,6 @@
           if (slider) slider.value = v.volume;
           if (valEl) valEl.textContent = v.volume;
         }
-        // Attach slider events after values are loaded
         var sliders = document.querySelectorAll(".bt-vol-slider");
         for (var j = 0; j < sliders.length; j++) {
           sliders[j].addEventListener("input", function () {
@@ -870,7 +1126,6 @@
     json("POST", "/api/bluetooth/scan", {}).then(function (devices) {
       btn.disabled = false;
       btn.textContent = "Scan for Devices";
-      // Filter out already connected from scan results
       var available = [];
       for (var i = 0; i < devices.length; i++) {
         if (!devices[i].connected) {
@@ -924,7 +1179,6 @@
     statusEl.textContent = (action === "connect" ? "Connecting..." : "Disconnecting...");
     statusEl.className = "status-msg";
 
-    // Disable the button that was clicked
     var btn = document.querySelector('[data-mac="' + mac + '"][data-action="' + action + '"]');
     if (btn) {
       btn.disabled = true;
@@ -939,7 +1193,6 @@
         statusEl.textContent = data.error || "Failed";
         statusEl.className = "status-msg err";
       }
-      // Refresh both connected list and scan results
       loadBtStatus();
       fetch("/api/bluetooth/devices")
         .then(function (r) { return r.json(); })
