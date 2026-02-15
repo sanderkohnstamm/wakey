@@ -72,9 +72,14 @@ async def _run_audio(alarm: Alarm, delay_seconds: int) -> None:
 
         if alarm.audio.enabled:
             if alarm.audio.source == "spotify" and alarm.audio.spotify_uri:
-                await spotify.play(uri=alarm.audio.spotify_uri)
-                vol = int(alarm.audio.volume / 100 * 65535)
-                await spotify.set_volume(vol)
+                ok = await spotify.play(uri=alarm.audio.spotify_uri)
+                if ok:
+                    await _spotify_volume_ramp(
+                        alarm.audio.volume, alarm.audio.ramp_seconds
+                    )
+                else:
+                    logger.warning("Spotify play failed, falling back to radio")
+                    await audio.start_playback(alarm.audio)
             else:
                 await audio.start_playback(alarm.audio)
     except asyncio.CancelledError:
@@ -128,13 +133,36 @@ async def _run_snooze_resume(alarm: Alarm) -> None:
         state.audio_start = datetime.now(timezone.utc).isoformat()
         if alarm.audio.enabled:
             if alarm.audio.source == "spotify" and alarm.audio.spotify_uri:
-                await spotify.play(uri=alarm.audio.spotify_uri)
-                vol = int(alarm.audio.volume / 100 * 65535)
-                await spotify.set_volume(vol)
+                ok = await spotify.play(uri=alarm.audio.spotify_uri)
+                if ok:
+                    await _spotify_volume_ramp(
+                        alarm.audio.volume, alarm.audio.ramp_seconds
+                    )
+                else:
+                    logger.warning("Spotify play failed on snooze resume, falling back to radio")
+                    await audio.start_playback(alarm.audio)
             else:
                 await audio.start_playback(alarm.audio)
     except asyncio.CancelledError:
         pass
+
+
+async def _spotify_volume_ramp(target_percent: int, ramp_seconds: int) -> None:
+    """Gradually ramp Spotify volume from 10% to target over ramp_seconds."""
+    if ramp_seconds <= 0:
+        vol = int(target_percent / 100 * 65535)
+        await spotify.set_volume(vol)
+        return
+
+    start_pct = 10
+    steps = max(1, ramp_seconds // 3)
+    for i in range(steps + 1):
+        t = i / steps
+        pct = int(start_pct + t * (target_percent - start_pct))
+        vol = int(pct / 100 * 65535)
+        await spotify.set_volume(vol)
+        if i < steps:
+            await asyncio.sleep(3)
 
 
 def _cancel_tasks() -> None:

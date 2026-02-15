@@ -78,7 +78,9 @@
         if (diff > 0) {
           var hours = Math.floor(diff / 3600000);
           var mins = Math.floor((diff % 3600000) / 60000);
-          nextAlarm.textContent = "Next alarm in " + hours + "h " + mins + "m";
+          var hh = String(next.getHours()).padStart(2, "0");
+          var mm = String(next.getMinutes()).padStart(2, "0");
+          nextAlarm.textContent = hh + ":" + mm + " \u00b7 in " + hours + "h " + mins + "m";
         } else {
           nextAlarm.textContent = "";
         }
@@ -110,6 +112,7 @@
 
   function renderHomeAlarms(alarms) {
     var el = $("#home-alarms");
+    alarms.sort(function (a, b) { return a.time < b.time ? -1 : a.time > b.time ? 1 : 0; });
     if (alarms.length === 0) {
       el.innerHTML = '<div class="home-alarms-empty">No alarms yet</div>';
       return;
@@ -118,9 +121,12 @@
     for (var i = 0; i < alarms.length; i++) {
       var a = alarms[i];
       var label = a.label ? a.label + " \u00b7 " : "";
+      var source = (a.audio && a.audio.source) || "radio";
+      var sourceLabel = source === "spotify" ? "Spotify" : "Radio";
       html += '<div class="home-alarm ' + (a.enabled ? "" : "disabled") + '" data-id="' + a.id + '">' +
         '<div class="ha-time">' + a.time + '</div>' +
         '<div class="ha-info">' + label + daysText(a.days) + '</div>' +
+        '<span class="ha-source ' + source + '">' + sourceLabel + '</span>' +
         '<label class="toggle" onclick="event.stopPropagation()">' +
           '<input type="checkbox" ' + (a.enabled ? "checked" : "") + ' data-alarm-id="' + a.id + '">' +
           '<span class="slider"></span>' +
@@ -272,7 +278,7 @@
     // selectedRooms: array of {id, name} that should be checked
     if (!selectedRooms) selectedRooms = [];
     var container = $("#f-hue-rooms");
-    container.innerHTML = '<span class="hint">Loading rooms...</span>';
+    container.innerHTML = '<span class="loading-placeholder">Loading rooms...</span>';
     fetch("/api/hue/rooms")
       .then(function (r) { return r.json(); })
       .then(function (rooms) {
@@ -668,7 +674,7 @@
           el.innerHTML = "";
           return;
         }
-        var html = '<div class="music-vol-header">Speaker Volume</div>';
+        var html = '<div class="music-vol-header section-header">Speaker Volume</div>';
         for (var i = 0; i < devices.length; i++) {
           var d = devices[i];
           html += '<div class="music-vol-row">' +
@@ -956,7 +962,7 @@
     var title = $("#hue-scenes-title");
     var list = $("#hue-scenes-list");
     title.textContent = roomName + " Scenes";
-    list.innerHTML = "Loading...";
+    list.innerHTML = '<span class="loading-placeholder">Loading...</span>';
     panel.style.display = "";
 
     fetch("/api/hue/rooms/" + roomId + "/scenes")
@@ -1271,10 +1277,14 @@
       cards[j].addEventListener("click", function (e) {
         if (e.target.classList.contains("preset-delete")) return;
         var uri = this.getAttribute("data-uri");
-        this.style.opacity = "0.5";
+        var nameEl = this.querySelector(".preset-name");
+        var origName = nameEl.textContent;
+        nameEl.textContent = "Playing...";
+        this.style.pointerEvents = "none";
         var self = this;
         json("POST", "/api/spotify/play", { uri: uri }).then(function (data) {
-          self.style.opacity = "";
+          nameEl.textContent = origName;
+          self.style.pointerEvents = "";
           if (data.ok) {
             // Mutual exclusion: radio was stopped by backend, update UI
             radioPlaying = false;
@@ -1293,8 +1303,8 @@
       delBtns[k].addEventListener("click", function (e) {
         e.stopPropagation();
         var id = this.getAttribute("data-id");
-        var card = this.parentElement;
-        card.style.opacity = "0.3";
+        this.disabled = true;
+        this.textContent = "...";
         fetch("/api/spotify/presets/" + id, { method: "DELETE" })
           .then(function (r) { return r.json(); })
           .then(function () {

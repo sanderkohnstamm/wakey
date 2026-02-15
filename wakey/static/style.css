@@ -13,6 +13,8 @@
   --danger-dim: rgba(204, 68, 68, 0.15);
   --success: #5ab583;
   --warning: #d4a050;
+  --spotify: #1DB954;
+  --spotify-dim: rgba(29, 185, 84, 0.15);
   --radius: 10px;
   --radius-sm: 8px;
 }
@@ -21,6 +23,26 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+/* ── Shared section header ── */
+.section-header {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-secondary);
+}
+
+/* ── Loading placeholder ── */
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+.loading-placeholder {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
 body {
@@ -211,10 +233,6 @@ body {
 }
 .home-alarms-title {
   font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-secondary);
 }
 
 /* ── Nav bar ── */
@@ -252,6 +270,7 @@ body {
 }
 .home-alarm:active {
   background: var(--bg-input);
+  transform: scale(0.99);
 }
 .home-alarm.disabled .ha-time,
 .home-alarm.disabled .ha-info {
@@ -282,6 +301,24 @@ body {
 .home-alarm .toggle input:checked + .slider::before {
   -webkit-transform: translateX(16px);
   transform: translateX(16px);
+}
+
+.ha-source {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.ha-source.radio {
+  color: var(--primary);
+  background: var(--primary-dim);
+}
+.ha-source.spotify {
+  color: var(--spotify);
+  background: var(--spotify-dim);
 }
 
 .home-alarms-empty {
@@ -551,11 +588,6 @@ input[type="checkbox"] {
   display: none;
 }
 .music-vol-header {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--text-secondary);
   margin-bottom: 10px;
 }
 .music-vol-row {
@@ -723,10 +755,6 @@ input[type="checkbox"] {
 }
 .hue-scenes-title {
   font-size: 0.85rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--text-secondary);
 }
 .hue-scenes-list {
   display: flex;
@@ -866,16 +894,11 @@ input[type="checkbox"] {
   background: var(--bg-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px;
+  padding: 16px;
   margin-bottom: 16px;
 }
 .config-section h3 {
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
   margin-bottom: 14px;
-  color: var(--text-secondary);
 }
 .config-actions {
   display: flex;
@@ -919,13 +942,13 @@ input[type="checkbox"] {
   line-height: 1.5;
 }
 .spotify-connect-prompt strong {
-  color: #1DB954;
+  color: var(--spotify);
 }
 .spotify-now-playing {
   background: var(--bg-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px 16px;
+  padding: 16px;
   margin-bottom: 12px;
 }
 .spotify-track-info {
@@ -949,7 +972,7 @@ input[type="checkbox"] {
 .spotify-controls .btn-play {
   flex: 1;
   padding: 12px;
-  background: #1DB954;
+  background: var(--spotify);
 }
 .spotify-controls .btn-small {
   padding: 10px 16px;
@@ -971,9 +994,9 @@ input[type="checkbox"] {
   transition: all 0.15s;
 }
 .sp-toggle.active {
-  background: rgba(29, 185, 84, 0.15);
-  border-color: #1DB954;
-  color: #1DB954;
+  background: var(--spotify-dim);
+  border-color: var(--spotify);
+  color: var(--spotify);
 }
 
 /* ── Spotify Presets ── */
@@ -988,11 +1011,6 @@ input[type="checkbox"] {
   margin-bottom: 10px;
 }
 .spotify-presets-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--text-secondary);
 }
 .spotify-presets {
   display: flex;
@@ -1018,6 +1036,7 @@ input[type="checkbox"] {
 }
 .preset-card:active {
   background: var(--bg-input);
+  transform: scale(0.99);
 }
 .preset-name {
   flex: 1;

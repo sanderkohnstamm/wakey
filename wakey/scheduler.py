@@ -18,6 +18,9 @@ scheduler = AsyncIOScheduler()
 # Map day index (0=Mon) to cron day_of_week
 _DAY_MAP = {0: "mon", 1: "tue", 2: "wed", 3: "thu", 4: "fri", 5: "sat", 6: "sun"}
 
+# Map job_id -> offset_minutes so we can recover the real alarm time
+_job_offsets: dict[str, int] = {}
+
 
 def start() -> None:
     if not scheduler.running:
@@ -34,6 +37,7 @@ def shutdown() -> None:
 def sync_alarms(alarms: list[Alarm]) -> None:
     """Remove all existing jobs and re-add enabled alarms."""
     scheduler.remove_all_jobs()
+    _job_offsets.clear()
 
     for a in alarms:
         if not a.enabled or not a.days:
@@ -67,17 +71,32 @@ def _add_alarm_job(a: Alarm) -> None:
     async def fire():
         await alarm_manager.trigger_alarm(a)
 
-    scheduler.add_job(fire, trigger, id=f"alarm_{a.id}", replace_existing=True)
+    job_id = f"alarm_{a.id}"
+    scheduler.add_job(fire, trigger, id=job_id, replace_existing=True)
+    _job_offsets[job_id] = offset
     logger.info("Scheduled alarm %s at %02d:%02d (trigger %02d:%02d) on %s",
                 a.id, hour, minute, trigger_hour, trigger_minute, days_of_week)
 
 
 def get_next_fire_time() -> str | None:
-    """Return the next alarm fire time as ISO string, or None."""
+    """Return the next alarm audio start time as ISO string, or None.
+
+    Jobs fire at alarm_time - hue_offset. We add the offset back
+    so the home screen shows when music actually starts.
+    """
+    from datetime import timedelta
+
     jobs = scheduler.get_jobs()
     if not jobs:
         return None
-    next_times = [j.next_run_time for j in jobs if j.next_run_time]
-    if not next_times:
-        return None
-    return min(next_times).isoformat()
+
+    earliest = None
+    for job in jobs:
+        if not job.next_run_time:
+            continue
+        offset = _job_offsets.get(job.id, 0)
+        audio_time = job.next_run_time + timedelta(minutes=offset)
+        if earliest is None or audio_time < earliest:
+            earliest = audio_time
+
+    return earliest.isoformat() if earliest else None
