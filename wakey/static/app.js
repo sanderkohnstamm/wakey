@@ -763,32 +763,67 @@
     fetch("/api/bluetooth/status")
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        var el = $("#bt-current");
-        if (data.connected && data.device) {
-          el.innerHTML = '<span class="bt-connected">Connected: ' + data.device.name + '</span>';
-        } else {
-          el.innerHTML = '<span class="bt-none">No speaker connected</span>';
-        }
+        renderConnectedDevices(data.devices || []);
       })
       .catch(function () {
-        $("#bt-current").innerHTML = '<span class="bt-none">Bluetooth unavailable</span>';
+        var el = $("#bt-connected-list");
+        el.innerHTML = '<div class="bt-no-devices">Bluetooth unavailable</div>';
       });
+  }
+
+  function renderConnectedDevices(devices) {
+    var el = $("#bt-connected-list");
+    if (!devices || devices.length === 0) {
+      el.innerHTML = '<div class="bt-no-devices">No speakers connected</div>';
+      return;
+    }
+    var html = "";
+    for (var i = 0; i < devices.length; i++) {
+      var d = devices[i];
+      html += '<div class="bt-connected-card">' +
+        '<div class="bt-connected-dot"></div>' +
+        '<span class="bt-connected-name">' + d.name + '</span>' +
+        '<button class="btn btn-stop" data-mac="' + d.mac + '" data-action="disconnect">Disconnect</button>' +
+      '</div>';
+    }
+    if (devices.length > 1) {
+      html += '<div class="hint" style="margin-top:4px">Audio plays on all ' + devices.length + ' speakers simultaneously</div>';
+    }
+    el.innerHTML = html;
+
+    var btns = el.querySelectorAll("button");
+    for (var j = 0; j < btns.length; j++) {
+      btns[j].addEventListener("click", function () {
+        btAction(this.getAttribute("data-mac"), "disconnect");
+      });
+    }
   }
 
   $("#btn-bt-scan").addEventListener("click", function () {
     var statusEl = $("#bt-status");
+    var btn = $("#btn-bt-scan");
     statusEl.textContent = "Scanning... (~8 seconds)";
     statusEl.className = "status-msg";
-    $("#btn-bt-scan").disabled = true;
+    btn.disabled = true;
+    btn.textContent = "Scanning...";
     $("#bt-devices").innerHTML = "";
 
     json("POST", "/api/bluetooth/scan", {}).then(function (devices) {
-      $("#btn-bt-scan").disabled = false;
-      statusEl.textContent = devices.length + " device(s) found";
+      btn.disabled = false;
+      btn.textContent = "Scan for Devices";
+      // Filter out already connected from scan results
+      var available = [];
+      for (var i = 0; i < devices.length; i++) {
+        if (!devices[i].connected) {
+          available.push(devices[i]);
+        }
+      }
+      statusEl.textContent = available.length + " available device(s)";
       statusEl.className = "status-msg";
-      renderBtDevices(devices);
+      renderBtDevices(available);
     }).catch(function () {
-      $("#btn-bt-scan").disabled = false;
+      btn.disabled = false;
+      btn.textContent = "Scan for Devices";
       statusEl.textContent = "Scan failed";
       statusEl.className = "status-msg err";
     });
@@ -803,23 +838,16 @@
     var html = "";
     for (var i = 0; i < devices.length; i++) {
       var d = devices[i];
-      var btnText, btnClass;
-      if (d.connected) {
-        btnText = "Disconnect";
-        btnClass = "btn btn-stop";
-      } else {
-        btnText = "Connect";
-        btnClass = "btn btn-test";
+      var badge = "";
+      if (d.paired) {
+        badge = ' <span class="bt-badge" style="color:var(--text-secondary)">Paired</span>';
       }
       html += '<div class="bt-device">' +
         '<div class="bt-info">' +
           '<div class="bt-name">' + d.name + '</div>' +
-          '<div class="bt-mac">' + d.mac +
-            (d.connected ? ' <span class="bt-badge">Connected</span>' : '') +
-            (d.paired && !d.connected ? ' <span class="bt-badge" style="color:var(--text-secondary)">Paired</span>' : '') +
-          '</div>' +
+          '<div class="bt-mac">' + d.mac + badge + '</div>' +
         '</div>' +
-        '<button class="' + btnClass + '" data-mac="' + d.mac + '" data-action="' + (d.connected ? 'disconnect' : 'connect') + '">' + btnText + '</button>' +
+        '<button class="btn btn-test" data-mac="' + d.mac + '" data-action="connect">Connect</button>' +
       '</div>';
     }
     el.innerHTML = html;
@@ -827,9 +855,7 @@
     var buttons = el.querySelectorAll("button");
     for (var j = 0; j < buttons.length; j++) {
       buttons[j].addEventListener("click", function () {
-        var mac = this.getAttribute("data-mac");
-        var action = this.getAttribute("data-action");
-        btAction(mac, action);
+        btAction(this.getAttribute("data-mac"), "connect");
       });
     }
   }
@@ -839,6 +865,13 @@
     statusEl.textContent = (action === "connect" ? "Connecting..." : "Disconnecting...");
     statusEl.className = "status-msg";
 
+    // Disable the button that was clicked
+    var btn = document.querySelector('[data-mac="' + mac + '"][data-action="' + action + '"]');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = (action === "connect" ? "Connecting..." : "...");
+    }
+
     json("POST", "/api/bluetooth/" + action, { mac: mac }).then(function (data) {
       if (data.ok) {
         statusEl.textContent = (action === "connect" ? "Connected!" : "Disconnected");
@@ -847,10 +880,19 @@
         statusEl.textContent = data.error || "Failed";
         statusEl.className = "status-msg err";
       }
+      // Refresh both connected list and scan results
       loadBtStatus();
       fetch("/api/bluetooth/devices")
         .then(function (r) { return r.json(); })
-        .then(function (devices) { renderBtDevices(devices); });
+        .then(function (devices) {
+          var available = [];
+          for (var i = 0; i < devices.length; i++) {
+            if (!devices[i].connected) {
+              available.push(devices[i]);
+            }
+          }
+          renderBtDevices(available);
+        });
     });
   }
 

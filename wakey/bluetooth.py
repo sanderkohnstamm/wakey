@@ -1,4 +1,4 @@
-"""Bluetooth device scanning, pairing, and connection via bluetoothctl."""
+"""Bluetooth device scanning, pairing, and connection via bluetoothctl + PulseAudio."""
 
 from __future__ import annotations
 
@@ -27,9 +27,22 @@ def _run(args: list[str], timeout: int = 10) -> str:
         return "ERROR: " + str(e)
 
 
+def _pactl(args: list[str], timeout: int = 5) -> str:
+    """Run a pactl command and return stdout."""
+    try:
+        result = subprocess.run(
+            ["pactl"] + args,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        return result.stdout
+    except Exception:
+        return ""
+
+
 async def scan(duration: int = 8) -> list[dict]:
     """Scan for nearby Bluetooth devices. Blocks for `duration` seconds."""
-    # Start scan in background
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, lambda: subprocess.run(
         ["bluetoothctl", "--timeout", str(duration), "scan", "on"],
@@ -41,11 +54,10 @@ async def scan(duration: int = 8) -> list[dict]:
 
 
 def list_devices() -> list[dict]:
-    """List all known Bluetooth devices."""
+    """List all known Bluetooth devices, sorted: connected > paired > rest."""
     output = _run(["devices"])
     devices = []
     for line in output.strip().splitlines():
-        # Format: "Device XX:XX:XX:XX:XX:XX Name"
         if line.startswith("Device "):
             parts = line.split(" ", 2)
             if len(parts) >= 3:
@@ -58,7 +70,10 @@ def list_devices() -> list[dict]:
                     "paired": info.get("paired", False),
                     "connected": info.get("connected", False),
                     "trusted": info.get("trusted", False),
+                    "icon": info.get("icon", ""),
                 })
+    # Sort: connected first, then paired, then the rest
+    devices.sort(key=lambda d: (not d["connected"], not d["paired"], d["name"]))
     return devices
 
 
@@ -74,6 +89,8 @@ def _get_device_info(mac: str) -> dict:
             info["connected"] = "yes" in line.lower()
         elif line.startswith("Trusted:"):
             info["trusted"] = "yes" in line.lower()
+        elif line.startswith("Icon:"):
+            info["icon"] = line.split(":", 1)[1].strip()
     return info
 
 
@@ -81,21 +98,36 @@ async def connect_device(mac: str) -> dict:
     """Pair, trust, and connect to a Bluetooth device."""
     loop = asyncio.get_event_loop()
 
-    # Pair
-    logger.info("Pairing with %s", mac)
-    pair_out = await loop.run_in_executor(None, lambda: _run(["pair", mac], timeout=15))
-    if "Failed" in pair_out and "Already Exists" not in pair_out:
-        return {"ok": False, "error": "Pairing failed: " + _extract_error(pair_out)}
+    # Check if already connected
+    info = _get_device_info(mac)
+    if info.get("connected"):
+        return {"ok": True, "already": True}
+
+    # Pair (skip if already paired)
+    if not info.get("paired"):
+        logger.info("Pairing with %s", mac)
+        pair_out = await loop.run_in_executor(None, lambda: _run(["pair", mac], timeout=15))
+        if "Failed" in pair_out and "Already Exists" not in pair_out:
+            return {"ok": False, "error": "Pairing failed: " + _extract_error(pair_out)}
 
     # Trust (so it auto-reconnects)
-    logger.info("Trusting %s", mac)
-    await loop.run_in_executor(None, lambda: _run(["trust", mac], timeout=5))
+    if not info.get("trusted"):
+        logger.info("Trusting %s", mac)
+        await loop.run_in_executor(None, lambda: _run(["trust", mac], timeout=5))
 
     # Connect
     logger.info("Connecting to %s", mac)
     conn_out = await loop.run_in_executor(None, lambda: _run(["connect", mac], timeout=15))
     if "Failed" in conn_out:
         return {"ok": False, "error": "Connection failed: " + _extract_error(conn_out)}
+
+    # Wait for PulseAudio to pick up the new sink
+    await asyncio.sleep(2)
+
+    # If multiple devices connected, set up combined sink
+    connected = get_connected_devices()
+    if len(connected) > 1:
+        await loop.run_in_executor(None, setup_combined_sink)
 
     logger.info("Connected to %s", mac)
     return {"ok": True}
@@ -107,16 +139,75 @@ async def disconnect_device(mac: str) -> dict:
     output = await loop.run_in_executor(None, lambda: _run(["disconnect", mac], timeout=10))
     if "Failed" in output:
         return {"ok": False, "error": _extract_error(output)}
+
+    # Wait for PulseAudio to update
+    await asyncio.sleep(1)
+
+    # Update combined sink if there are still multiple connected
+    connected = get_connected_devices()
+    if len(connected) > 1:
+        await loop.run_in_executor(None, setup_combined_sink)
+    elif len(connected) == 1:
+        # Single device left, remove combined sink and use it directly
+        await loop.run_in_executor(None, remove_combined_sink)
     return {"ok": True}
 
 
-def get_connected_device() -> dict | None:
-    """Return the currently connected audio device, if any."""
+def get_connected_devices() -> list[dict]:
+    """Return all currently connected Bluetooth devices."""
     devices = list_devices()
-    for d in devices:
-        if d["connected"]:
-            return d
-    return None
+    return [d for d in devices if d["connected"]]
+
+
+def get_connected_device() -> dict | None:
+    """Return the first connected audio device, if any."""
+    connected = get_connected_devices()
+    return connected[0] if connected else None
+
+
+def get_bt_sinks() -> list[str]:
+    """Get PulseAudio sink names for connected Bluetooth devices."""
+    output = _pactl(["list", "sinks", "short"])
+    sinks = []
+    for line in output.strip().splitlines():
+        parts = line.split("\t")
+        if len(parts) >= 2 and "bluez" in parts[1].lower():
+            sinks.append(parts[1])
+    return sinks
+
+
+def setup_combined_sink() -> bool:
+    """Create a PulseAudio combined sink for all connected BT devices."""
+    sinks = get_bt_sinks()
+    if len(sinks) < 2:
+        return False
+
+    # Remove existing combined sink first
+    remove_combined_sink()
+
+    slaves = ",".join(sinks)
+    logger.info("Creating combined sink with slaves: %s", slaves)
+    _pactl([
+        "load-module", "module-combine-sink",
+        "sink_name=wakey_combined",
+        "sink_properties=device.description=Wakey_Combined",
+        "slaves=" + slaves,
+    ])
+
+    # Set as default
+    _pactl(["set-default-sink", "wakey_combined"])
+    return True
+
+
+def remove_combined_sink() -> None:
+    """Remove the combined sink if it exists."""
+    output = _pactl(["list", "modules", "short"])
+    for line in output.strip().splitlines():
+        parts = line.split("\t")
+        if len(parts) >= 2 and "module-combine-sink" in line and "wakey_combined" in line:
+            module_id = parts[0]
+            _pactl(["unload-module", module_id])
+            logger.info("Removed combined sink module %s", module_id)
 
 
 def _extract_error(output: str) -> str:

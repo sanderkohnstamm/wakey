@@ -23,11 +23,14 @@ async def get_devices() -> list[dict]:
 
 @router.get("/status")
 async def get_status() -> dict:
-    """Get currently connected Bluetooth audio device."""
-    device = bluetooth.get_connected_device()
-    if device:
-        return {"connected": True, "device": device}
-    return {"connected": False, "device": None}
+    """Get all connected Bluetooth audio devices."""
+    connected = bluetooth.get_connected_devices()
+    return {
+        "connected": len(connected) > 0,
+        "devices": connected,
+        # Keep backward compat
+        "device": connected[0] if connected else None,
+    }
 
 
 @router.post("/connect")

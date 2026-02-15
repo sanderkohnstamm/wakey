@@ -618,16 +618,49 @@ input[type="checkbox"] {
 
 /* ── Bluetooth ── */
 
-.bt-current {
-  font-size: 0.85rem;
+.bt-connected-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin-bottom: 12px;
-  min-height: 1.2em;
 }
-.bt-current .bt-connected {
-  color: var(--success);
+.bt-connected-list:empty {
+  margin-bottom: 0;
 }
-.bt-current .bt-none {
+.bt-connected-list::before {
+  content: "";
+  display: none;
+}
+.bt-no-devices {
+  font-size: 0.85rem;
   color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+.bt-connected-card {
+  background: rgba(90, 181, 131, 0.08);
+  border: 1px solid rgba(90, 181, 131, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bt-connected-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+}
+.bt-connected-name {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.bt-connected-card .btn {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  font-size: 0.75rem;
 }
 .bt-device-list {
   margin-top: 10px;
