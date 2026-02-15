@@ -176,6 +176,24 @@
           <button class="btn btn-small sp-toggle" id="btn-sp-repeat">Repeat</button>
         </div>
       </div>
+
+      <!-- Saved playlists (always visible when Spotify available) -->
+      <div id="spotify-presets-section" style="display:none">
+        <div class="spotify-presets-header">
+          <span class="spotify-presets-title">Saved Playlists</span>
+          <button class="btn btn-add" id="btn-add-preset">+</button>
+        </div>
+        <div id="spotify-presets" class="spotify-presets"></div>
+
+        <div id="preset-form" class="preset-form" style="display:none">
+          <input type="text" id="preset-name" placeholder="Name (e.g. Morning Mix)">
+          <input type="text" id="preset-uri" placeholder="Paste Spotify link or URI">
+          <div class="preset-form-actions">
+            <button class="btn btn-save" id="btn-save-preset">Save</button>
+            <button class="btn btn-small" id="btn-cancel-preset">Cancel</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Speaker volumes (shared across tabs) -->

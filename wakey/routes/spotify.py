@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from .. import spotify
+from ..config import load_spotify_presets, save_spotify_presets
 
 router = APIRouter(prefix="/api/spotify")
 
@@ -109,3 +110,47 @@ async def repeat(body: dict) -> dict:
     """Set repeat on/off."""
     ok = await spotify.set_repeat(body.get("enabled", False))
     return {"ok": ok}
+
+
+# ── Saved presets ──
+
+@router.get("/presets")
+async def get_presets() -> list[dict]:
+    """Get saved Spotify playlists/albums."""
+    return load_spotify_presets()
+
+
+@router.post("/presets")
+async def add_preset(body: dict) -> dict:
+    """Add a Spotify preset. Accepts name + uri or link."""
+    name = body.get("name", "").strip()
+    raw = body.get("uri", "").strip()
+    if not raw:
+        return {"ok": False, "error": "URI or link required"}
+
+    uri = spotify.parse_spotify_input(raw)
+    if not uri:
+        return {"ok": False, "error": "Invalid Spotify link or URI"}
+
+    if not name:
+        name = uri.split(":")[-1][:12]
+
+    presets = load_spotify_presets()
+    # Avoid duplicates
+    for p in presets:
+        if p.get("uri") == uri:
+            return {"ok": True, "duplicate": True}
+
+    import uuid
+    presets.append({"id": uuid.uuid4().hex[:8], "name": name, "uri": uri})
+    save_spotify_presets(presets)
+    return {"ok": True}
+
+
+@router.delete("/presets/{preset_id}")
+async def delete_preset(preset_id: str) -> dict:
+    """Remove a saved preset."""
+    presets = load_spotify_presets()
+    presets = [p for p in presets if p.get("id") != preset_id]
+    save_spotify_presets(presets)
+    return {"ok": True}

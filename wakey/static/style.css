@@ -918,6 +918,95 @@ input[type="checkbox"] {
   color: #1DB954;
 }
 
+/* ── Spotify Presets ── */
+
+.spotify-presets-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.spotify-presets-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-secondary);
+}
+.spotify-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.preset-empty {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 12px 0;
+}
+.preset-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.preset-card:active {
+  background: var(--bg-input);
+}
+.preset-name {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 500;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.preset-delete {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  padding: 2px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.15s;
+  -webkit-appearance: none;
+}
+.preset-delete:active {
+  color: var(--danger);
+}
+.preset-form {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.preset-form input[type="text"] {
+  font-size: 0.85rem;
+  padding: 9px 12px;
+}
+.preset-form-actions {
+  display: flex;
+  gap: 8px;
+}
+.preset-form-actions .btn-save {
+  flex: 1;
+  margin-top: 0;
+  padding: 10px;
+  font-size: 0.85rem;
+}
+.preset-form-actions .btn-small {
+  padding: 10px 16px;
+}
+
 /* ── Responsive ── */
 
 @media (min-width: 600px) {

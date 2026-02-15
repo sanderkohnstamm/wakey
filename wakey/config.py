@@ -50,3 +50,14 @@ def save_config(config: AppConfig) -> None:
     data = _load_raw()
     data["config"] = config.model_dump()
     _save_raw(data)
+
+
+def load_spotify_presets() -> list[dict]:
+    data = _load_raw()
+    return data.get("spotify_presets", [])
+
+
+def save_spotify_presets(presets: list[dict]) -> None:
+    data = _load_raw()
+    data["spotify_presets"] = presets
+    _save_raw(data)

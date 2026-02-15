@@ -611,10 +611,15 @@
           $("#spotify-unavailable").style.display = "";
           $("#spotify-idle").style.display = "none";
           $("#spotify-active").style.display = "none";
+          $("#spotify-presets-section").style.display = "none";
           return;
         }
 
         $("#spotify-unavailable").style.display = "none";
+        if ($("#spotify-presets-section").style.display === "none") {
+          $("#spotify-presets-section").style.display = "";
+          loadSpotifyPresets();
+        }
 
         if (data.stopped && !data.track) {
           // Connected but nothing playing, no session
@@ -1090,6 +1095,111 @@
       });
     }
   }
+
+  // ═══════════════════════════════════════
+  // ── Spotify Presets ──
+  // ═══════════════════════════════════════
+
+  var presetsLoaded = false;
+
+  function loadSpotifyPresets() {
+    if (presetsLoaded) return;
+    presetsLoaded = true;
+    fetch("/api/spotify/presets")
+      .then(function (r) { return r.json(); })
+      .then(function (presets) {
+        presetsLoaded = false;
+        renderSpotifyPresets(presets);
+      })
+      .catch(function () { presetsLoaded = false; });
+  }
+
+  function renderSpotifyPresets(presets) {
+    var el = $("#spotify-presets");
+    if (!presets || presets.length === 0) {
+      el.innerHTML = '<div class="preset-empty">No saved playlists yet</div>';
+      return;
+    }
+    var html = "";
+    for (var i = 0; i < presets.length; i++) {
+      var p = presets[i];
+      html += '<div class="preset-card" data-uri="' + p.uri + '">' +
+        '<span class="preset-name">' + p.name + '</span>' +
+        '<button class="btn preset-delete" data-id="' + p.id + '">&times;</button>' +
+      '</div>';
+    }
+    el.innerHTML = html;
+
+    // Play on tap
+    var cards = el.querySelectorAll(".preset-card");
+    for (var j = 0; j < cards.length; j++) {
+      cards[j].addEventListener("click", function (e) {
+        if (e.target.classList.contains("preset-delete")) return;
+        var uri = this.getAttribute("data-uri");
+        this.style.opacity = "0.5";
+        var self = this;
+        json("POST", "/api/spotify/play", { uri: uri }).then(function () {
+          self.style.opacity = "";
+          setTimeout(pollSpotifyStatus, 500);
+        });
+      });
+    }
+
+    // Delete buttons
+    var delBtns = el.querySelectorAll(".preset-delete");
+    for (var k = 0; k < delBtns.length; k++) {
+      delBtns[k].addEventListener("click", function (e) {
+        e.stopPropagation();
+        var id = this.getAttribute("data-id");
+        var card = this.parentElement;
+        card.style.opacity = "0.3";
+        fetch("/api/spotify/presets/" + id, { method: "DELETE" })
+          .then(function (r) { return r.json(); })
+          .then(function () {
+            presetsLoaded = false;
+            loadSpotifyPresets();
+          });
+      });
+    }
+  }
+
+  // Add preset form
+  $("#btn-add-preset").addEventListener("click", function () {
+    var form = $("#preset-form");
+    form.style.display = form.style.display === "none" ? "" : "none";
+    if (form.style.display !== "none") {
+      $("#preset-name").value = "";
+      $("#preset-uri").value = "";
+      $("#preset-name").focus();
+    }
+  });
+
+  $("#btn-cancel-preset").addEventListener("click", function () {
+    $("#preset-form").style.display = "none";
+  });
+
+  $("#btn-save-preset").addEventListener("click", function () {
+    var name = $("#preset-name").value.trim();
+    var uri = $("#preset-uri").value.trim();
+    if (!uri) return;
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+    json("POST", "/api/spotify/presets", { name: name, uri: uri }).then(function (data) {
+      btn.disabled = false;
+      btn.textContent = "Save";
+      if (data.ok) {
+        $("#preset-form").style.display = "none";
+        presetsLoaded = false;
+        loadSpotifyPresets();
+      } else {
+        alert(data.error || "Failed to save");
+      }
+    }).catch(function () {
+      btn.disabled = false;
+      btn.textContent = "Save";
+    });
+  });
 
   function btAction(mac, action) {
     var statusEl = $("#bt-status");

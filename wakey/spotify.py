@@ -8,6 +8,7 @@ via the local REST API (no OAuth needed).
 from __future__ import annotations
 
 import logging
+import re
 
 import httpx
 
@@ -109,3 +110,25 @@ async def set_repeat(enabled: bool) -> bool:
     """Toggle repeat."""
     data = await _api("POST", "/player/repeat_context", {"repeat_context": enabled})
     return data is not None
+
+
+def parse_spotify_input(text: str) -> str | None:
+    """Convert a Spotify link or URI to a spotify: URI.
+
+    Accepts:
+      - spotify:playlist:abc123
+      - https://open.spotify.com/playlist/abc123?si=xxx
+      - open.spotify.com/playlist/abc123
+    """
+    text = text.strip()
+
+    # Already a spotify URI
+    if text.startswith("spotify:"):
+        return text
+
+    # URL: extract type and id
+    m = re.search(r"open\.spotify\.com/(playlist|album|track|artist)/([A-Za-z0-9]+)", text)
+    if m:
+        return "spotify:" + m.group(1) + ":" + m.group(2)
+
+    return None
