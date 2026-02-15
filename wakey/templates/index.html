@@ -145,24 +145,20 @@
 
     <!-- Spotify sub-panel -->
     <div id="music-spotify" class="music-panel">
-      <div id="spotify-not-connected">
-        <div id="spotify-not-configured" class="hue-notice" style="display:none">
-          <p>Spotify not configured.</p>
-          <button class="btn btn-small" id="btn-goto-spotify-settings">Go to Settings</button>
-        </div>
-        <div id="spotify-login-panel" class="spotify-login-panel" style="display:none">
-          <button class="btn btn-spotify" id="btn-spotify-login">Connect Spotify</button>
-          <p class="hint" style="margin-top:12px">After logging in, you'll be redirected to a page that may not load.<br>Copy the <strong>code</strong> from the URL and paste it below.</p>
-          <div class="spotify-code-entry" id="spotify-code-entry" style="display:none">
-            <input type="text" id="spotify-code-input" placeholder="Paste code from URL here">
-            <button class="btn btn-save" id="btn-spotify-code" style="margin-top:8px">Submit Code</button>
-          </div>
+      <div id="spotify-unavailable" class="hue-notice" style="display:none">
+        <p>Spotify Connect not available.</p>
+        <p class="hint">Make sure go-librespot is running on the Pi.</p>
+      </div>
+
+      <div id="spotify-idle" style="display:none">
+        <div class="spotify-connect-prompt">
+          <p>Open Spotify on your phone and select <strong>Wakey</strong> as the playback device.</p>
+          <div class="hint" style="margin-top:8px">The Pi appears as a Spotify Connect speaker.</div>
         </div>
       </div>
 
-      <div id="spotify-connected" style="display:none">
-        <!-- Now playing -->
-        <div class="spotify-now-playing" id="spotify-now-playing">
+      <div id="spotify-active" style="display:none">
+        <div class="spotify-now-playing">
           <div class="spotify-track-info">
             <div class="spotify-track" id="sp-track">Not playing</div>
             <div class="spotify-artist" id="sp-artist"></div>
@@ -175,11 +171,9 @@
           <button class="btn btn-small" id="btn-sp-next">&raquo;</button>
         </div>
 
-        <div class="spotify-section-header">Playlists</div>
-        <div id="spotify-playlists" class="spotify-playlists"></div>
-
-        <div class="spotify-disconnect">
-          <button class="btn btn-small" id="btn-spotify-disconnect">Disconnect Spotify</button>
+        <div class="spotify-controls-secondary">
+          <button class="btn btn-small sp-toggle" id="btn-sp-shuffle">Shuffle</button>
+          <button class="btn btn-small sp-toggle" id="btn-sp-repeat">Repeat</button>
         </div>
       </div>
     </div>
@@ -258,23 +252,6 @@
       <div id="hue-status" class="status-msg"></div>
     </section>
 
-    <!-- Spotify -->
-    <section class="config-section">
-      <h3>Spotify</h3>
-      <div class="form-group">
-        <label for="cfg-spotify-id">Client ID</label>
-        <input type="text" id="cfg-spotify-id" placeholder="From Spotify Developer Dashboard">
-      </div>
-      <div class="form-group">
-        <label for="cfg-spotify-secret">Client Secret</label>
-        <input type="text" id="cfg-spotify-secret" placeholder="From Spotify Developer Dashboard">
-      </div>
-      <div class="config-actions">
-        <button class="btn btn-save" id="btn-save-spotify">Save</button>
-      </div>
-      <p class="hint">Create an app at developer.spotify.com. Add<br><code>http://localhost:8000/api/spotify/callback</code><br>as redirect URI.</p>
-      <div id="spotify-status" class="status-msg"></div>
-    </section>
   </div>
 
   <script src="/static/app.js"></script>

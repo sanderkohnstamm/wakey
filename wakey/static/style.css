@@ -853,36 +853,15 @@ input[type="checkbox"] {
 
 /* ── Spotify ── */
 
-.spotify-login-panel {
+.spotify-connect-prompt {
   text-align: center;
-  padding: 24px 0;
+  padding: 24px 16px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
-.btn-spotify {
-  background: #1DB954;
-  color: #fff;
-  font-weight: 600;
-  font-size: 0.95rem;
-  padding: 12px 28px;
-  border: none;
-  border-radius: var(--radius);
-  cursor: pointer;
-  -webkit-appearance: none;
-}
-.btn-spotify:active {
-  opacity: 0.85;
-}
-.spotify-code-entry {
-  margin-top: 12px;
-  max-width: 320px;
-  margin-left: auto;
-  margin-right: auto;
-}
-.spotify-code-entry input {
-  width: 100%;
-  font-size: 0.85rem;
-}
-.spotify-code-entry .btn-save {
-  font-size: 0.85rem;
+.spotify-connect-prompt strong {
+  color: #1DB954;
 }
 .spotify-now-playing {
   background: var(--bg-raised);
@@ -919,57 +898,24 @@ input[type="checkbox"] {
   font-size: 1.1rem;
   font-weight: 700;
 }
-.spotify-section-header {
+.spotify-controls-secondary {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+.sp-toggle {
   font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-}
-.spotify-playlists {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: 300px;
-  overflow-y: auto;
-}
-.spotify-playlist-btn {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--bg-input);
+  padding: 6px 14px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
-  cursor: pointer;
-  -webkit-appearance: none;
-  color: var(--text);
-  text-align: left;
+  background: none;
+  color: var(--text-secondary);
   transition: all 0.15s;
 }
-.spotify-playlist-btn:active {
-  background: var(--primary-dim);
-}
-.spotify-playlist-btn.active {
+.sp-toggle.active {
+  background: rgba(29, 185, 84, 0.15);
   border-color: #1DB954;
-  background: rgba(29, 185, 84, 0.1);
-}
-.sp-pl-name {
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-.sp-pl-tracks {
-  font-size: 0.72rem;
-  color: var(--text-secondary);
-  flex-shrink: 0;
-}
-.spotify-disconnect {
-  margin-top: 16px;
-  text-align: center;
-}
-.spotify-disconnect .btn {
-  color: var(--text-secondary);
+  color: #1DB954;
 }
 
 /* ── Responsive ── */

@@ -579,43 +579,21 @@
   }
 
   // ═══════════════════════════════════════
-  // ── Spotify ──
+  // ── Spotify (via go-librespot) ──
   // ═══════════════════════════════════════
 
   function loadSpotifyPanel() {
-    // Check config first
-    fetch("/api/config")
-      .then(function (r) { return r.json(); })
-      .then(function (cfg) {
-        if (!cfg.spotify || !cfg.spotify.client_id) {
-          $("#spotify-not-configured").style.display = "";
-          $("#spotify-login-panel").style.display = "none";
-          $("#spotify-connected").style.display = "none";
-          return;
-        }
-        // Config exists, check if connected
-        return fetch("/api/spotify/status")
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            if (data.connected) {
-              $("#spotify-not-connected").style.display = "none";
-              $("#spotify-connected").style.display = "";
-              loadSpotifyPlaylists();
-              pollSpotifyPlayback();
-              startSpotifyPolling();
-            } else {
-              $("#spotify-not-configured").style.display = "none";
-              $("#spotify-login-panel").style.display = "";
-              $("#spotify-connected").style.display = "none";
-            }
-          });
-      })
-      .catch(function () {});
+    $("#spotify-unavailable").style.display = "none";
+    $("#spotify-idle").style.display = "none";
+    $("#spotify-active").style.display = "none";
+
+    pollSpotifyStatus();
+    startSpotifyPolling();
   }
 
   function startSpotifyPolling() {
     stopSpotifyPolling();
-    spotifyPollingTimer = setInterval(pollSpotifyPlayback, 3000);
+    spotifyPollingTimer = setInterval(pollSpotifyStatus, 3000);
   }
 
   function stopSpotifyPolling() {
@@ -625,114 +603,30 @@
     }
   }
 
-  // Go to settings from spotify panel
-  $("#btn-goto-spotify-settings").addEventListener("click", function () {
-    loadSettingsView();
-    showView("settings");
-  });
-
-  // Login
-  $("#btn-spotify-login").addEventListener("click", function () {
-    fetch("/api/spotify/auth-url")
+  function pollSpotifyStatus() {
+    fetch("/api/spotify/status")
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        if (data.ok && data.url) {
-          // Open in new tab so user can copy code from URL
-          window.open(data.url, "_blank");
-          // Show the code entry field
-          $("#spotify-code-entry").style.display = "";
-        }
-      });
-  });
-
-  // Manual code entry
-  $("#btn-spotify-code").addEventListener("click", function () {
-    var codeInput = $("#spotify-code-input");
-    var code = codeInput.value.trim();
-    if (!code) return;
-
-    // If user pasted the full URL, extract the code param
-    if (code.indexOf("code=") !== -1) {
-      var match = code.match(/[?&]code=([^&]+)/);
-      if (match) code = match[1];
-    }
-
-    var btn = this;
-    btn.disabled = true;
-    btn.textContent = "Connecting...";
-
-    json("POST", "/api/spotify/exchange-code", { code: code }).then(function (data) {
-      btn.disabled = false;
-      btn.textContent = "Submit Code";
-      if (data.ok) {
-        codeInput.value = "";
-        $("#spotify-code-entry").style.display = "none";
-        loadSpotifyPanel();
-      } else {
-        codeInput.value = "";
-        codeInput.placeholder = data.error || "Failed - try again";
-      }
-    });
-  });
-
-  // Disconnect
-  $("#btn-spotify-disconnect").addEventListener("click", function () {
-    json("POST", "/api/spotify/disconnect", {}).then(function () {
-      stopSpotifyPolling();
-      $("#spotify-not-connected").style.display = "";
-      $("#spotify-login-panel").style.display = "";
-      $("#spotify-connected").style.display = "none";
-    });
-  });
-
-  // Playlists
-  function loadSpotifyPlaylists() {
-    var el = $("#spotify-playlists");
-    el.innerHTML = '<div class="home-alarms-empty">Loading playlists...</div>';
-
-    fetch("/api/spotify/playlists")
-      .then(function (r) { return r.json(); })
-      .then(function (playlists) {
-        if (playlists.length === 0) {
-          el.innerHTML = '<div class="home-alarms-empty">No playlists found</div>';
+        if (!data.available) {
+          $("#spotify-unavailable").style.display = "";
+          $("#spotify-idle").style.display = "none";
+          $("#spotify-active").style.display = "none";
           return;
         }
-        var html = "";
-        for (var i = 0; i < playlists.length; i++) {
-          var p = playlists[i];
-          html += '<button class="spotify-playlist-btn" data-uri="' + p.uri + '">' +
-            '<span class="sp-pl-name">' + p.name + '</span>' +
-            '<span class="sp-pl-tracks">' + p.tracks + ' tracks</span>' +
-          '</button>';
-        }
-        el.innerHTML = html;
 
-        var btns = el.querySelectorAll(".spotify-playlist-btn");
-        for (var j = 0; j < btns.length; j++) {
-          btns[j].addEventListener("click", function () {
-            var uri = this.getAttribute("data-uri");
-            // Highlight active
-            var all = el.querySelectorAll(".spotify-playlist-btn");
-            for (var k = 0; k < all.length; k++) {
-              all[k].classList.remove("active");
-            }
-            this.classList.add("active");
-            json("POST", "/api/spotify/play", { uri: uri }).then(function () {
-              setTimeout(pollSpotifyPlayback, 500);
-            });
-          });
-        }
-      })
-      .catch(function () {
-        el.innerHTML = '<div class="home-alarms-empty">Failed to load playlists</div>';
-      });
-  }
+        $("#spotify-unavailable").style.display = "none";
 
-  // Playback state
-  function pollSpotifyPlayback() {
-    fetch("/api/spotify/playback")
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
+        if (data.stopped && !data.track) {
+          // Connected but nothing playing, no session
+          $("#spotify-idle").style.display = "";
+          $("#spotify-active").style.display = "none";
+          return;
+        }
+
+        // Has a session (playing, paused, or has track info)
+        $("#spotify-idle").style.display = "none";
+        $("#spotify-active").style.display = "";
+
         var trackEl = $("#sp-track");
         var artistEl = $("#sp-artist");
         var playBtn = $("#btn-sp-play");
@@ -740,42 +634,57 @@
         if (data.track) {
           trackEl.textContent = data.track;
           artistEl.textContent = data.artist || "";
-          playBtn.textContent = data.is_playing ? "Pause" : "Play";
         } else {
           trackEl.textContent = "Not playing";
           artistEl.textContent = "";
-          playBtn.textContent = "Play";
         }
+        playBtn.textContent = data.playing ? "Pause" : "Play";
+
+        // Update toggle states
+        var shuffleBtn = $("#btn-sp-shuffle");
+        var repeatBtn = $("#btn-sp-repeat");
+        shuffleBtn.classList.toggle("active", !!data.shuffle);
+        repeatBtn.classList.toggle("active", !!data.repeat);
       })
-      .catch(function () {});
+      .catch(function () {
+        $("#spotify-unavailable").style.display = "";
+        $("#spotify-idle").style.display = "none";
+        $("#spotify-active").style.display = "none";
+      });
   }
 
   // Play/Pause
   $("#btn-sp-play").addEventListener("click", function () {
-    var btn = this;
-    if (btn.textContent === "Pause") {
-      json("POST", "/api/spotify/pause", {}).then(function () {
-        btn.textContent = "Play";
-        setTimeout(pollSpotifyPlayback, 300);
-      });
-    } else {
-      json("POST", "/api/spotify/play", {}).then(function () {
-        btn.textContent = "Pause";
-        setTimeout(pollSpotifyPlayback, 300);
-      });
-    }
+    json("POST", "/api/spotify/playpause", {}).then(function () {
+      setTimeout(pollSpotifyStatus, 300);
+    });
   });
 
   // Skip
   $("#btn-sp-prev").addEventListener("click", function () {
     json("POST", "/api/spotify/previous", {}).then(function () {
-      setTimeout(pollSpotifyPlayback, 500);
+      setTimeout(pollSpotifyStatus, 500);
     });
   });
 
   $("#btn-sp-next").addEventListener("click", function () {
     json("POST", "/api/spotify/next", {}).then(function () {
-      setTimeout(pollSpotifyPlayback, 500);
+      setTimeout(pollSpotifyStatus, 500);
+    });
+  });
+
+  // Shuffle / Repeat
+  $("#btn-sp-shuffle").addEventListener("click", function () {
+    var isActive = this.classList.contains("active");
+    json("POST", "/api/spotify/shuffle", { enabled: !isActive }).then(function () {
+      setTimeout(pollSpotifyStatus, 300);
+    });
+  });
+
+  $("#btn-sp-repeat").addEventListener("click", function () {
+    var isActive = this.classList.contains("active");
+    json("POST", "/api/spotify/repeat", { enabled: !isActive }).then(function () {
+      setTimeout(pollSpotifyStatus, 300);
     });
   });
 
@@ -957,17 +866,9 @@
       .then(function (cfg) {
         $("#cfg-hue-ip").value = cfg.hue.bridge_ip || "";
         $("#cfg-hue-user").value = cfg.hue.username || "";
-        $("#cfg-spotify-id").value = (cfg.spotify && cfg.spotify.client_id) || "";
-        $("#cfg-spotify-secret").value = (cfg.spotify && cfg.spotify.client_secret) || "";
       });
     $("#hue-status").textContent = "";
     $("#hue-status").className = "status-msg";
-    $("#spotify-status").textContent = "";
-    $("#spotify-status").className = "status-msg";
-
-    // Reset spotify code entry
-    var codeEntry = $("#spotify-code-entry");
-    if (codeEntry) codeEntry.style.display = "none";
   }
 
   // Generate Hue API key
@@ -1028,21 +929,6 @@
         el.textContent = "Failed: " + (data.error || "Unknown error");
         el.className = "status-msg err";
       }
-    });
-  });
-
-  // Save Spotify config
-  $("#btn-save-spotify").addEventListener("click", function () {
-    var body = {
-      spotify: {
-        client_id: $("#cfg-spotify-id").value.trim(),
-        client_secret: $("#cfg-spotify-secret").value.trim()
-      }
-    };
-    json("PUT", "/api/config", body).then(function () {
-      var el = $("#spotify-status");
-      el.textContent = "Saved!";
-      el.className = "status-msg ok";
     });
   });
 

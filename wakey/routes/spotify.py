@@ -1,96 +1,50 @@
-"""Spotify integration routes."""
+"""Spotify integration routes via go-librespot."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter
 
 from .. import spotify
 
 router = APIRouter(prefix="/api/spotify")
 
 
-@router.get("/auth-url")
-async def auth_url() -> dict:
-    """Get the Spotify authorization URL (uses localhost redirect)."""
-    url = spotify.get_auth_url()
-    if not url:
-        return {"ok": False, "error": "Configure Spotify client ID first"}
-    return {"ok": True, "url": url}
-
-
-@router.get("/callback", response_class=HTMLResponse)
-async def callback(request: Request, code: str = "", error: str = "") -> str:
-    """OAuth callback from Spotify (only works when accessed from localhost)."""
-    if error:
-        return _callback_page("Spotify authorization failed: " + error, False)
-
-    if not code:
-        return _callback_page("No authorization code received", False)
-
-    result = await spotify.exchange_code(code)
-
-    if result.get("ok"):
-        return _callback_page("Spotify connected! You can close this tab.", True)
-    return _callback_page(result.get("error", "Unknown error"), False)
-
-
-@router.post("/exchange-code")
-async def exchange_code(body: dict) -> dict:
-    """Manually exchange an authorization code (for when redirect doesn't reach server)."""
-    code = body.get("code", "").strip()
-    if not code:
-        return {"ok": False, "error": "No code provided"}
-    return await spotify.exchange_code(code)
-
-
-def _callback_page(message: str, success: bool) -> str:
-    color = "#5ab583" if success else "#c44"
-    return (
-        '<!DOCTYPE html><html><head><meta charset="UTF-8">'
-        '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        '<style>body{background:#111113;color:#f0f0f0;font-family:-apple-system,sans-serif;'
-        'display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}'
-        'div{text-align:center}p{color:' + color + ';font-size:1.2rem;margin-bottom:16px}'
-        'a{color:#6e9fff;text-decoration:none}</style></head><body><div>'
-        '<p>' + message + '</p>'
-        '<a href="/">Back to Wakey</a></div></body></html>'
-    )
-
-
 @router.get("/status")
 async def status() -> dict:
-    """Check if Spotify is connected."""
-    return {"connected": spotify.is_connected()}
+    """Check if Spotify Connect is available and get playback state."""
+    available = await spotify.is_available()
+    if not available:
+        return {"available": False}
 
+    data = await spotify.get_status()
+    if not data:
+        return {"available": True, "playing": False}
 
-@router.get("/playlists")
-async def playlists() -> list[dict]:
-    """Get user's playlists."""
-    return await spotify.get_playlists()
-
-
-@router.get("/devices")
-async def devices() -> list[dict]:
-    """Get available Spotify Connect devices."""
-    return await spotify.get_devices()
-
-
-@router.get("/playback")
-async def playback() -> dict:
-    """Get current playback state."""
-    data = await spotify.get_playback()
-    if data is None:
-        return {"is_playing": False}
-    return data
+    # Parse go-librespot status into a clean response
+    track = data.get("track", {})
+    result = {
+        "available": True,
+        "username": data.get("username", ""),
+        "playing": data.get("stopped") is not True and data.get("paused") is not True,
+        "paused": data.get("paused", False),
+        "stopped": data.get("stopped", True),
+        "shuffle": data.get("shuffle_context", False),
+        "repeat": data.get("repeat_context", False),
+    }
+    if track:
+        result["track"] = track.get("name", "")
+        result["artist"] = track.get("artist_names", [""])[0] if track.get("artist_names") else ""
+        result["album"] = track.get("album_name", "")
+        result["duration_ms"] = track.get("duration", 0)
+        result["image"] = track.get("album_cover_url", "")
+    return result
 
 
 @router.post("/play")
 async def play(body: dict) -> dict:
-    """Start playback. Optional: uri, device_id."""
+    """Start playback. Optional: uri (spotify URI for playlist/album/track)."""
     uri = body.get("uri")
-    device_id = body.get("device_id")
-    ok = await spotify.play(uri=uri, device_id=device_id)
+    ok = await spotify.play(uri=uri)
     return {"ok": ok}
 
 
@@ -98,6 +52,13 @@ async def play(body: dict) -> dict:
 async def pause() -> dict:
     """Pause playback."""
     ok = await spotify.pause()
+    return {"ok": ok}
+
+
+@router.post("/playpause")
+async def playpause() -> dict:
+    """Toggle play/pause."""
+    ok = await spotify.play_pause()
     return {"ok": ok}
 
 
@@ -115,13 +76,36 @@ async def prev_track() -> dict:
     return {"ok": ok}
 
 
-@router.post("/disconnect")
-async def disconnect() -> dict:
-    """Remove Spotify tokens."""
-    from ..config import load_config, save_config
-    cfg = load_config()
-    cfg.spotify.access_token = ""
-    cfg.spotify.refresh_token = ""
-    cfg.spotify.token_expiry = 0
-    save_config(cfg)
-    return {"ok": True}
+@router.post("/volume")
+async def set_volume(body: dict) -> dict:
+    """Set Spotify volume (0-100, mapped to go-librespot range)."""
+    pct = body.get("volume", 50)
+    # go-librespot uses 0-65535 range
+    vol = int(pct / 100 * 65535)
+    ok = await spotify.set_volume(vol)
+    return {"ok": ok}
+
+
+@router.get("/volume")
+async def get_volume() -> dict:
+    """Get current Spotify volume."""
+    data = await spotify.get_volume()
+    if not data:
+        return {"volume": 0}
+    max_vol = data.get("max", 65535) or 65535
+    pct = int(data.get("value", 0) / max_vol * 100)
+    return {"volume": pct}
+
+
+@router.post("/shuffle")
+async def shuffle(body: dict) -> dict:
+    """Set shuffle on/off."""
+    ok = await spotify.set_shuffle(body.get("enabled", False))
+    return {"ok": ok}
+
+
+@router.post("/repeat")
+async def repeat(body: dict) -> dict:
+    """Set repeat on/off."""
+    ok = await spotify.set_repeat(body.get("enabled", False))
+    return {"ok": ok}

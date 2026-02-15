@@ -21,13 +21,6 @@ class GlobalHueConfig(BaseModel):
     username: str = ""
 
 
-class SpotifyConfig(BaseModel):
-    client_id: str = ""
-    client_secret: str = ""
-    access_token: str = ""
-    refresh_token: str = ""
-    token_expiry: float = 0  # unix timestamp
-
 
 class HueConfig(BaseModel):
     room_id: str = ""
@@ -69,7 +62,6 @@ class AlarmUpdate(BaseModel):
 class AppConfig(BaseModel):
     """Global app configuration persisted alongside alarms."""
     hue: GlobalHueConfig = Field(default_factory=GlobalHueConfig)
-    spotify: SpotifyConfig = Field(default_factory=SpotifyConfig)
 
 
 class AppState(BaseModel):
