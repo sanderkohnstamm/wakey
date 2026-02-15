@@ -45,3 +45,15 @@ async def test_radio(body: dict) -> dict:
 async def stop_test_radio() -> dict:
     audio.stop_playback()
     return {"ok": True}
+
+
+@router.get("/test-radio/status")
+async def radio_status() -> dict:
+    return {"playing": audio.is_playing()}
+
+
+@router.post("/test-radio/volume")
+async def set_radio_volume(body: dict) -> dict:
+    volume = body.get("volume", 50)
+    audio._set_volume(volume)
+    return {"ok": True}

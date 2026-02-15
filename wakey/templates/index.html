@@ -32,7 +32,7 @@
     <div class="nav-bar">
       <button class="btn btn-nav" id="btn-go-radio">Radio</button>
       <button class="btn btn-nav" id="btn-go-hue">Lights</button>
-      <button class="btn btn-nav" id="btn-go-bluetooth">Settings</button>
+      <button class="btn btn-nav" id="btn-go-settings">Settings</button>
     </div>
   </div>
 
@@ -119,12 +119,12 @@
     </div>
 
     <div class="radio-player">
-      <div class="radio-now-playing" id="radio-now-playing">Not playing</div>
-
-      <div class="form-group">
-        <label for="radio-station">Station</label>
-        <select id="radio-station"></select>
+      <div class="radio-display">
+        <div class="radio-indicator" id="radio-indicator"></div>
+        <div class="radio-now-playing" id="radio-now-playing">Select a station</div>
       </div>
+
+      <div class="radio-station-list" id="radio-station-list"></div>
 
       <div class="form-group">
         <label for="radio-volume">Volume <span id="radio-volume-val">50</span>%</label>
@@ -140,7 +140,7 @@
     </div>
   </div>
 
-  <!-- Hue / Lights View -->
+  <!-- Lights View -->
   <div id="view-hue" class="view">
     <div class="view-header">
       <button class="btn btn-back" id="btn-back-main-hue">&larr;</button>
@@ -148,8 +148,48 @@
       <div></div>
     </div>
 
+    <div id="hue-not-configured" class="hue-notice" style="display:none">
+      <p>Hue Bridge not configured.</p>
+      <button class="btn btn-small" id="btn-goto-hue-settings">Go to Settings</button>
+    </div>
+
+    <div id="hue-rooms-container">
+      <div id="hue-rooms" class="hue-rooms"></div>
+    </div>
+
+    <div id="hue-scenes-panel" class="hue-scenes-panel" style="display:none">
+      <div class="hue-scenes-header">
+        <span class="hue-scenes-title" id="hue-scenes-title">Scenes</span>
+        <button class="btn btn-small" id="btn-close-scenes">&times;</button>
+      </div>
+      <div id="hue-scenes-list" class="hue-scenes-list"></div>
+    </div>
+
+    <div id="lights-status" class="status-msg"></div>
+  </div>
+
+  <!-- Settings View -->
+  <div id="view-settings" class="view">
+    <div class="view-header">
+      <button class="btn btn-back" id="btn-back-main-settings">&larr;</button>
+      <h2>Settings</h2>
+      <div></div>
+    </div>
+
+    <!-- Bluetooth Speaker -->
     <section class="config-section">
-      <h3>Bridge Connection</h3>
+      <h3>Bluetooth Speaker</h3>
+      <div id="bt-current" class="bt-current"></div>
+      <div class="config-actions">
+        <button class="btn btn-test" id="btn-bt-scan">Scan for Devices</button>
+      </div>
+      <div id="bt-status" class="status-msg"></div>
+      <div id="bt-devices" class="bt-device-list"></div>
+    </section>
+
+    <!-- Hue Connection -->
+    <section class="config-section">
+      <h3>Philips Hue</h3>
       <div class="form-group">
         <label for="cfg-hue-ip">Bridge IP</label>
         <input type="text" id="cfg-hue-ip" placeholder="192.168.1.x">
@@ -167,38 +207,6 @@
         <button class="btn btn-small" id="btn-test-hue">Test Connection</button>
       </div>
       <div id="hue-status" class="status-msg"></div>
-    </section>
-
-    <section class="config-section">
-      <h3>Rooms</h3>
-      <div class="form-group">
-        <label for="cfg-hue-room">Room</label>
-        <select id="cfg-hue-room"><option value="">-- save connection first --</option></select>
-      </div>
-      <div class="config-actions">
-        <button class="btn btn-small" id="btn-cfg-refresh-rooms">Load Rooms</button>
-        <button class="btn btn-test" id="btn-test-light">Test Light</button>
-      </div>
-      <div id="light-status" class="status-msg"></div>
-    </section>
-  </div>
-
-  <!-- Bluetooth / Settings View -->
-  <div id="view-bluetooth" class="view">
-    <div class="view-header">
-      <button class="btn btn-back" id="btn-back-main-bt">&larr;</button>
-      <h2>Settings</h2>
-      <div></div>
-    </div>
-
-    <section class="config-section">
-      <h3>Bluetooth Speaker</h3>
-      <div id="bt-current" class="bt-current"></div>
-      <div class="config-actions">
-        <button class="btn btn-test" id="btn-bt-scan">Scan for Devices</button>
-      </div>
-      <div id="bt-status" class="status-msg"></div>
-      <div id="bt-devices" class="bt-device-list"></div>
     </section>
   </div>
 

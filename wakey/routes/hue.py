@@ -11,9 +11,9 @@ router = APIRouter(prefix="/api/hue")
 
 
 @router.get("/rooms")
-async def get_rooms() -> list[dict]:
+async def get_rooms(state: bool = False) -> list[dict]:
     cfg = load_config().hue
-    return await hue.get_rooms(cfg)
+    return await hue.get_rooms(cfg, include_state=state)
 
 
 @router.get("/status")
@@ -43,3 +43,24 @@ async def test_light(body: dict) -> dict:
     cfg = load_config().hue
     room_id = body.get("room_id", "")
     return await hue.test_light(cfg, room_id)
+
+
+@router.put("/rooms/{room_id}/state")
+async def set_room_state(room_id: str, body: dict) -> dict:
+    cfg = load_config().hue
+    return await hue.set_room_state(cfg, room_id, body)
+
+
+@router.get("/rooms/{room_id}/scenes")
+async def get_scenes(room_id: str) -> list[dict]:
+    cfg = load_config().hue
+    return await hue.get_scenes(cfg, room_id)
+
+
+@router.post("/rooms/{room_id}/scene")
+async def activate_scene(room_id: str, body: dict) -> dict:
+    cfg = load_config().hue
+    scene_id = body.get("scene_id", "")
+    if not scene_id:
+        return {"ok": False, "error": "scene_id required"}
+    return await hue.activate_scene(cfg, room_id, scene_id)

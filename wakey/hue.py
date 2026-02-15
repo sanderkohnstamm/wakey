@@ -38,7 +38,7 @@ async def register_user(bridge_ip: str) -> dict:
         return {"ok": False, "error": str(e)}
 
 
-async def get_rooms(cfg: GlobalHueConfig) -> list[dict]:
+async def get_rooms(cfg: GlobalHueConfig, include_state: bool = False) -> list[dict]:
     """Fetch groups/rooms from the Hue bridge."""
     if not cfg.bridge_ip or not cfg.username:
         return []
@@ -50,11 +50,72 @@ async def get_rooms(cfg: GlobalHueConfig) -> list[dict]:
         rooms = []
         for gid, group in data.items():
             if group.get("type") in ("Room", "Zone"):
-                rooms.append({"id": gid, "name": group["name"], "type": group["type"]})
+                room = {"id": gid, "name": group["name"], "type": group["type"]}
+                if include_state:
+                    action = group.get("action", {})
+                    state = group.get("state", {})
+                    room["on"] = state.get("any_on", False)
+                    room["all_on"] = state.get("all_on", False)
+                    room["bri"] = action.get("bri", 0)
+                    room["ct"] = action.get("ct", 300)
+                    room["lights"] = group.get("lights", [])
+                rooms.append(room)
         return rooms
     except Exception:
         logger.exception("Failed to fetch Hue rooms")
         return []
+
+
+async def set_room_state(cfg: GlobalHueConfig, room_id: str, state: dict) -> dict:
+    """Set room state (on, bri, ct)."""
+    if not cfg.bridge_ip or not cfg.username or not room_id:
+        return {"ok": False, "error": "Hue not configured"}
+    url = f"{_bridge_url(cfg)}/groups/{room_id}/action"
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            await client.put(url, json=state)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+async def get_scenes(cfg: GlobalHueConfig, room_id: str = "") -> list[dict]:
+    """Fetch scenes, optionally filtered by room (group)."""
+    if not cfg.bridge_ip or not cfg.username:
+        return []
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get(f"{_bridge_url(cfg)}/scenes")
+            resp.raise_for_status()
+            data = resp.json()
+        scenes = []
+        for sid, scene in data.items():
+            if room_id and scene.get("group") != room_id:
+                continue
+            scenes.append({
+                "id": sid,
+                "name": scene.get("name", ""),
+                "group": scene.get("group", ""),
+                "type": scene.get("type", ""),
+            })
+        scenes.sort(key=lambda s: s["name"])
+        return scenes
+    except Exception:
+        logger.exception("Failed to fetch Hue scenes")
+        return []
+
+
+async def activate_scene(cfg: GlobalHueConfig, room_id: str, scene_id: str) -> dict:
+    """Activate a Hue scene."""
+    if not cfg.bridge_ip or not cfg.username:
+        return {"ok": False, "error": "Hue not configured"}
+    url = f"{_bridge_url(cfg)}/groups/{room_id}/action"
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            await client.put(url, json={"scene": scene_id})
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 async def check_bridge(cfg: GlobalHueConfig) -> dict:

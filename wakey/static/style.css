@@ -455,21 +455,59 @@ input[type="checkbox"] {
 .radio-player {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
+}
+.radio-display {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 20px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.radio-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--border);
+  margin: 0 auto 14px;
+  transition: background 0.3s;
+}
+.radio-indicator.live {
+  background: var(--success);
+  box-shadow: 0 0 8px rgba(90, 181, 131, 0.5);
 }
 .radio-now-playing {
-  text-align: center;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: 500;
   color: var(--text-secondary);
-  padding: 24px 0;
-  min-height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .radio-now-playing.active {
-  color: var(--success);
+  color: var(--text);
+}
+.radio-station-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.radio-station-btn {
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-appearance: none;
+  transition: all 0.15s;
+}
+.radio-station-btn.active {
+  background: var(--primary-dim);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
 }
 .radio-controls {
   display: flex;
@@ -479,6 +517,103 @@ input[type="checkbox"] {
   flex: 0 0 auto;
   padding: 14px 24px;
   font-size: 1rem;
+}
+
+/* ── Hue / Lights ── */
+
+.hue-notice {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-secondary);
+}
+.hue-notice p {
+  margin-bottom: 14px;
+  font-size: 0.95rem;
+}
+.hue-rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hue-room-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.hue-room-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.hue-room-name {
+  flex: 1;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.hue-room-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hue-room-controls .form-group {
+  gap: 4px;
+}
+.hue-room-controls label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.hue-room-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.hue-room-actions .btn {
+  font-size: 0.78rem;
+  padding: 6px 12px;
+}
+.hue-scenes-panel {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-top: 12px;
+}
+.hue-scenes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.hue-scenes-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-secondary);
+}
+.hue-scenes-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.hue-scene-btn {
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  -webkit-appearance: none;
+  transition: all 0.15s;
+}
+.hue-scene-btn:active {
+  background: var(--primary-dim);
+  border-color: var(--primary);
 }
 
 /* ── Bluetooth ── */

@@ -6,6 +6,8 @@
   var DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   var currentAlarmId = null;
   var radioPlaying = false;
+  var selectedStation = null;
+  var stationsCache = null;
 
   // ── Helpers ──
 
@@ -126,7 +128,6 @@
     }
     el.innerHTML = html;
 
-    // Toggle handlers
     var toggles = el.querySelectorAll(".toggle input");
     for (var j = 0; j < toggles.length; j++) {
       toggles[j].addEventListener("change", function () {
@@ -137,7 +138,6 @@
       });
     }
 
-    // Click to edit
     var cards = el.querySelectorAll(".home-alarm");
     for (var k = 0; k < cards.length; k++) {
       cards[k].addEventListener("click", function () {
@@ -166,19 +166,19 @@
   });
 
   $("#btn-go-hue").addEventListener("click", function () {
-    loadHueView();
+    loadLightsView();
     showView("hue");
   });
 
-  $("#btn-go-bluetooth").addEventListener("click", function () {
-    loadBluetoothView();
-    showView("bluetooth");
+  $("#btn-go-settings").addEventListener("click", function () {
+    loadSettingsView();
+    showView("settings");
   });
 
   $("#btn-back-main").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
   $("#btn-back-main-radio").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
   $("#btn-back-main-hue").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
-  $("#btn-back-main-bt").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
+  $("#btn-back-main-settings").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
 
   // ── Add alarm ──
 
@@ -287,8 +287,6 @@
   $("#f-snooze").addEventListener("input", function () { $("#f-snooze-val").textContent = this.value; });
   $("#f-autostop").addEventListener("input", function () { $("#f-autostop-val").textContent = this.value; });
 
-  // ── Refresh rooms in edit view ──
-
   $("#btn-refresh-rooms").addEventListener("click", function () {
     loadHueRoomsForEdit(null);
   });
@@ -299,6 +297,7 @@
     fetch("/api/stations")
       .then(function (r) { return r.json(); })
       .then(function (stations) {
+        stationsCache = stations;
         var html = "";
         for (var i = 0; i < stations.length; i++) {
           var s = stations[i];
@@ -367,60 +366,324 @@
   // ═══════════════════════════════════════
 
   function loadRadioView() {
-    loadStations($("#radio-station"), null);
-    $("#radio-status").textContent = "";
-    $("#radio-status").className = "status-msg";
+    var el = $("#radio-status");
+    el.textContent = "";
+    el.className = "status-msg";
+
+    // Check if already playing
+    fetch("/api/config/test-radio/status")
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.playing) {
+          radioPlaying = true;
+          $("#radio-indicator").className = "radio-indicator live";
+          if (selectedStation) {
+            $("#radio-now-playing").textContent = selectedStation;
+            $("#radio-now-playing").className = "radio-now-playing active";
+          }
+        }
+      })
+      .catch(function () {});
+
+    // Load station buttons
+    fetch("/api/stations")
+      .then(function (r) { return r.json(); })
+      .then(function (stations) {
+        stationsCache = stations;
+        renderStationButtons(stations);
+      });
+  }
+
+  function renderStationButtons(stations) {
+    var el = $("#radio-station-list");
+    var html = "";
+    for (var i = 0; i < stations.length; i++) {
+      var s = stations[i];
+      var active = selectedStation === s.name ? " active" : "";
+      html += '<button class="radio-station-btn' + active + '" data-id="' + s.id + '" data-name="' + s.name + '">' + s.name + '</button>';
+    }
+    el.innerHTML = html;
+
+    var btns = el.querySelectorAll(".radio-station-btn");
+    for (var j = 0; j < btns.length; j++) {
+      btns[j].addEventListener("click", function () {
+        var id = this.getAttribute("data-id");
+        var name = this.getAttribute("data-name");
+        selectStation(id, name);
+      });
+    }
+  }
+
+  function selectStation(id, name) {
+    selectedStation = name;
+    // Update active state
+    var btns = $$("#radio-station-list .radio-station-btn");
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle("active", btns[i].getAttribute("data-id") === id);
+    }
+
+    // If playing, switch station immediately
+    if (radioPlaying) {
+      playStation(id, name);
+    } else {
+      $("#radio-now-playing").textContent = name;
+      $("#radio-now-playing").className = "radio-now-playing";
+    }
+  }
+
+  function playStation(id, name) {
+    var volume = parseInt($("#radio-volume").value);
+    var np = $("#radio-now-playing");
+    var indicator = $("#radio-indicator");
+    np.textContent = "Connecting...";
+    np.className = "radio-now-playing";
+    indicator.className = "radio-indicator";
+
+    json("POST", "/api/config/test-radio", { station: id, volume: volume }).then(function (data) {
+      if (data.ok) {
+        radioPlaying = true;
+        selectedStation = data.station || name;
+        np.textContent = selectedStation;
+        np.className = "radio-now-playing active";
+        indicator.className = "radio-indicator live";
+        $("#radio-status").textContent = "";
+        $("#radio-status").className = "status-msg";
+      } else {
+        radioPlaying = false;
+        np.textContent = "Failed to play";
+        np.className = "radio-now-playing";
+        indicator.className = "radio-indicator";
+        $("#radio-status").textContent = data.error || "Playback failed";
+        $("#radio-status").className = "status-msg err";
+      }
+    });
   }
 
   $("#radio-volume").addEventListener("input", function () {
     $("#radio-volume-val").textContent = this.value;
+    // Live volume update while playing
+    if (radioPlaying) {
+      json("POST", "/api/config/test-radio/volume", { volume: parseInt(this.value) });
+    }
   });
 
   $("#btn-radio-play").addEventListener("click", function () {
-    var station = $("#radio-station").value;
-    var volume = parseInt($("#radio-volume").value);
-    var el = $("#radio-status");
-    var np = $("#radio-now-playing");
-    el.textContent = "Starting...";
-    el.className = "status-msg";
-    np.textContent = "Connecting...";
-    np.className = "radio-now-playing";
-
-    json("POST", "/api/config/test-radio", { station: station, volume: volume }).then(function (data) {
-      if (data.ok) {
-        radioPlaying = true;
-        var stationName = data.station || "Radio";
-        np.textContent = stationName;
-        np.className = "radio-now-playing active";
-        el.textContent = "";
-        el.className = "status-msg";
-      } else {
-        radioPlaying = false;
-        np.textContent = "Not playing";
-        np.className = "radio-now-playing";
-        el.textContent = data.error || "Failed to play";
-        el.className = "status-msg err";
-      }
-    });
+    // Find selected station
+    var activeBtn = $("#radio-station-list .radio-station-btn.active");
+    var id, name;
+    if (activeBtn) {
+      id = activeBtn.getAttribute("data-id");
+      name = activeBtn.getAttribute("data-name");
+    } else if (stationsCache && stationsCache.length > 0) {
+      id = stationsCache[0].id;
+      name = stationsCache[0].name;
+      selectStation(id, name);
+    } else {
+      return;
+    }
+    playStation(id, name);
   });
 
   $("#btn-radio-stop").addEventListener("click", function () {
     json("POST", "/api/config/test-radio/stop", {}).then(function () {
       radioPlaying = false;
-      var np = $("#radio-now-playing");
-      np.textContent = "Not playing";
-      np.className = "radio-now-playing";
-      var el = $("#radio-status");
-      el.textContent = "";
-      el.className = "status-msg";
+      selectedStation = null;
+      $("#radio-now-playing").textContent = "Select a station";
+      $("#radio-now-playing").className = "radio-now-playing";
+      $("#radio-indicator").className = "radio-indicator";
+      $("#radio-status").textContent = "";
+      $("#radio-status").className = "status-msg";
+      // Deselect station buttons
+      var btns = $$("#radio-station-list .radio-station-btn");
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].classList.remove("active");
+      }
     });
   });
 
   // ═══════════════════════════════════════
-  // ── Hue / Lights View ──
+  // ── Lights View ──
   // ═══════════════════════════════════════
 
-  function loadHueView() {
+  var lightsRoomData = [];
+
+  function loadLightsView() {
+    $("#lights-status").textContent = "";
+    $("#lights-status").className = "status-msg";
+    $("#hue-scenes-panel").style.display = "none";
+
+    // Check if configured
+    fetch("/api/hue/status")
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.connected) {
+          $("#hue-not-configured").style.display = "none";
+          $("#hue-rooms-container").style.display = "";
+          loadHueRooms();
+        } else {
+          $("#hue-not-configured").style.display = "";
+          $("#hue-rooms-container").style.display = "none";
+        }
+      })
+      .catch(function () {
+        $("#hue-not-configured").style.display = "";
+        $("#hue-rooms-container").style.display = "none";
+      });
+  }
+
+  $("#btn-goto-hue-settings").addEventListener("click", function () {
+    loadSettingsView();
+    showView("settings");
+  });
+
+  function loadHueRooms() {
+    fetch("/api/hue/rooms?state=true")
+      .then(function (r) { return r.json(); })
+      .then(function (rooms) {
+        lightsRoomData = rooms;
+        renderHueRooms(rooms);
+      });
+  }
+
+  function renderHueRooms(rooms) {
+    var el = $("#hue-rooms");
+    if (rooms.length === 0) {
+      el.innerHTML = '<div class="home-alarms-empty">No rooms found on bridge</div>';
+      return;
+    }
+    var html = "";
+    for (var i = 0; i < rooms.length; i++) {
+      var r = rooms[i];
+      var briPct = Math.round(r.bri / 254 * 100);
+      // Color temp: 153 (cool/6500K) to 500 (warm/2000K)
+      html += '<div class="hue-room-card" data-room-id="' + r.id + '">' +
+        '<div class="hue-room-header">' +
+          '<span class="hue-room-name">' + r.name + '</span>' +
+          '<label class="toggle">' +
+            '<input type="checkbox" ' + (r.on ? "checked" : "") + ' data-room-id="' + r.id + '" class="hue-room-toggle">' +
+            '<span class="slider"></span>' +
+          '</label>' +
+        '</div>' +
+        '<div class="hue-room-controls">' +
+          '<div class="form-group">' +
+            '<label>Brightness <span class="hue-bri-val" data-room="' + r.id + '">' + briPct + '</span>%</label>' +
+            '<input type="range" min="1" max="100" value="' + briPct + '" class="hue-bri-slider" data-room-id="' + r.id + '">' +
+          '</div>' +
+          '<div class="form-group">' +
+            '<label>Warmth</label>' +
+            '<input type="range" min="153" max="500" value="' + r.ct + '" class="hue-ct-slider" data-room-id="' + r.id + '">' +
+          '</div>' +
+          '<div class="hue-room-actions">' +
+            '<button class="btn btn-small hue-scenes-btn" data-room-id="' + r.id + '" data-room-name="' + r.name + '">Scenes</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+    el.innerHTML = html;
+
+    // Room toggles
+    var toggles = el.querySelectorAll(".hue-room-toggle");
+    for (var j = 0; j < toggles.length; j++) {
+      toggles[j].addEventListener("change", function () {
+        var rid = this.getAttribute("data-room-id");
+        json("PUT", "/api/hue/rooms/" + rid + "/state", { on: this.checked });
+      });
+    }
+
+    // Brightness sliders
+    var briSliders = el.querySelectorAll(".hue-bri-slider");
+    for (var k = 0; k < briSliders.length; k++) {
+      briSliders[k].addEventListener("input", function () {
+        var rid = this.getAttribute("data-room-id");
+        var valEl = el.querySelector('.hue-bri-val[data-room="' + rid + '"]');
+        if (valEl) valEl.textContent = this.value;
+      });
+      briSliders[k].addEventListener("change", function () {
+        var rid = this.getAttribute("data-room-id");
+        var bri = Math.round(parseInt(this.value) / 100 * 254);
+        json("PUT", "/api/hue/rooms/" + rid + "/state", { on: true, bri: bri });
+        // Also check the toggle
+        var toggle = el.querySelector('.hue-room-toggle[data-room-id="' + rid + '"]');
+        if (toggle) toggle.checked = true;
+      });
+    }
+
+    // Color temp sliders
+    var ctSliders = el.querySelectorAll(".hue-ct-slider");
+    for (var m = 0; m < ctSliders.length; m++) {
+      ctSliders[m].addEventListener("change", function () {
+        var rid = this.getAttribute("data-room-id");
+        var ct = parseInt(this.value);
+        json("PUT", "/api/hue/rooms/" + rid + "/state", { on: true, ct: ct });
+        var toggle = el.querySelector('.hue-room-toggle[data-room-id="' + rid + '"]');
+        if (toggle) toggle.checked = true;
+      });
+    }
+
+    // Scene buttons
+    var sceneBtns = el.querySelectorAll(".hue-scenes-btn");
+    for (var n = 0; n < sceneBtns.length; n++) {
+      sceneBtns[n].addEventListener("click", function () {
+        var rid = this.getAttribute("data-room-id");
+        var rname = this.getAttribute("data-room-name");
+        openScenes(rid, rname);
+      });
+    }
+  }
+
+  function openScenes(roomId, roomName) {
+    var panel = $("#hue-scenes-panel");
+    var title = $("#hue-scenes-title");
+    var list = $("#hue-scenes-list");
+    title.textContent = roomName + " Scenes";
+    list.innerHTML = "Loading...";
+    panel.style.display = "";
+
+    fetch("/api/hue/rooms/" + roomId + "/scenes")
+      .then(function (r) { return r.json(); })
+      .then(function (scenes) {
+        if (scenes.length === 0) {
+          list.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">No scenes available</span>';
+          return;
+        }
+        var html = "";
+        for (var i = 0; i < scenes.length; i++) {
+          var s = scenes[i];
+          html += '<button class="hue-scene-btn" data-scene-id="' + s.id + '" data-room-id="' + roomId + '">' + s.name + '</button>';
+        }
+        list.innerHTML = html;
+
+        var btns = list.querySelectorAll(".hue-scene-btn");
+        for (var j = 0; j < btns.length; j++) {
+          btns[j].addEventListener("click", function () {
+            var sid = this.getAttribute("data-scene-id");
+            var rid = this.getAttribute("data-room-id");
+            json("POST", "/api/hue/rooms/" + rid + "/scene", { scene_id: sid }).then(function (data) {
+              if (data.ok) {
+                // Refresh room state after scene activation
+                setTimeout(loadHueRooms, 500);
+              }
+            });
+          });
+        }
+      });
+  }
+
+  $("#btn-close-scenes").addEventListener("click", function () {
+    $("#hue-scenes-panel").style.display = "none";
+  });
+
+  // ═══════════════════════════════════════
+  // ── Settings View ──
+  // ═══════════════════════════════════════
+
+  function loadSettingsView() {
+    // Load BT status
+    loadBtStatus();
+    $("#bt-status").textContent = "";
+    $("#bt-status").className = "status-msg";
+
+    // Load Hue config
     fetch("/api/config")
       .then(function (r) { return r.json(); })
       .then(function (cfg) {
@@ -429,8 +692,6 @@
       });
     $("#hue-status").textContent = "";
     $("#hue-status").className = "status-msg";
-    $("#light-status").textContent = "";
-    $("#light-status").className = "status-msg";
   }
 
   // Generate Hue API key
@@ -450,7 +711,6 @@
         $("#cfg-hue-user").value = data.username;
         el.textContent = "API key generated and saved!";
         el.className = "status-msg ok";
-        loadCfgRooms(null);
       } else {
         el.textContent = data.error || "Registration failed";
         el.className = "status-msg err";
@@ -488,54 +748,6 @@
       if (data.connected) {
         el.textContent = "Connected to " + data.name;
         el.className = "status-msg ok";
-        loadCfgRooms(null);
-      } else {
-        el.textContent = "Failed: " + (data.error || "Unknown error");
-        el.className = "status-msg err";
-      }
-    });
-  });
-
-  // Load rooms
-  function loadCfgRooms(selectedId) {
-    var sel = $("#cfg-hue-room");
-    sel.innerHTML = '<option value="">Loading...</option>';
-    fetch("/api/hue/rooms")
-      .then(function (r) { return r.json(); })
-      .then(function (rooms) {
-        if (rooms.length === 0) {
-          sel.innerHTML = '<option value="">No rooms found</option>';
-          return;
-        }
-        var html = "";
-        for (var i = 0; i < rooms.length; i++) {
-          var r = rooms[i];
-          html += '<option value="' + r.id + '"' + (r.id === selectedId ? " selected" : "") + '>' + r.name + '</option>';
-        }
-        sel.innerHTML = html;
-      });
-  }
-
-  $("#btn-cfg-refresh-rooms").addEventListener("click", function () {
-    loadCfgRooms(null);
-  });
-
-  // Test light
-  $("#btn-test-light").addEventListener("click", function () {
-    var roomId = $("#cfg-hue-room").value;
-    if (!roomId) {
-      var el = $("#light-status");
-      el.textContent = "Select a room first";
-      el.className = "status-msg err";
-      return;
-    }
-    var el = $("#light-status");
-    el.textContent = "Testing...";
-    el.className = "status-msg";
-    json("POST", "/api/hue/test", { room_id: roomId }).then(function (data) {
-      if (data.ok) {
-        el.textContent = "Light flashed!";
-        el.className = "status-msg ok";
       } else {
         el.textContent = "Failed: " + (data.error || "Unknown error");
         el.className = "status-msg err";
@@ -544,14 +756,8 @@
   });
 
   // ═══════════════════════════════════════
-  // ── Bluetooth View ──
+  // ── Bluetooth ──
   // ═══════════════════════════════════════
-
-  function loadBluetoothView() {
-    loadBtStatus();
-    $("#bt-status").textContent = "";
-    $("#bt-status").className = "status-msg";
-  }
 
   function loadBtStatus() {
     fetch("/api/bluetooth/status")
@@ -569,7 +775,6 @@
       });
   }
 
-  // Scan
   $("#btn-bt-scan").addEventListener("click", function () {
     var statusEl = $("#bt-status");
     statusEl.textContent = "Scanning... (~8 seconds)";
@@ -643,7 +848,6 @@
         statusEl.className = "status-msg err";
       }
       loadBtStatus();
-      // Refresh device list
       fetch("/api/bluetooth/devices")
         .then(function (r) { return r.json(); })
         .then(function (devices) { renderBtDevices(devices); });
