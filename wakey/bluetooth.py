@@ -36,8 +36,18 @@ def _pactl(args: list[str], timeout: int = 5) -> str:
             text=True,
             timeout=timeout,
         )
+        if result.returncode != 0:
+            logger.warning("pactl %s failed (rc=%d): %s",
+                           " ".join(args), result.returncode, result.stderr.strip())
         return result.stdout
-    except Exception:
+    except FileNotFoundError:
+        logger.error("pactl not found")
+        return ""
+    except subprocess.TimeoutExpired:
+        logger.warning("pactl %s timed out", " ".join(args))
+        return ""
+    except Exception as e:
+        logger.error("pactl %s error: %s", " ".join(args), e)
         return ""
 
 
@@ -179,6 +189,7 @@ def get_bt_sinks() -> list[str]:
 def setup_combined_sink() -> bool:
     """Create a PulseAudio combined sink for all connected BT devices."""
     sinks = get_bt_sinks()
+    logger.info("setup_combined_sink: found %d bluez sinks: %s", len(sinks), sinks)
     if len(sinks) < 2:
         return False
 
@@ -187,12 +198,13 @@ def setup_combined_sink() -> bool:
 
     slaves = ",".join(sinks)
     logger.info("Creating combined sink with slaves: %s", slaves)
-    _pactl([
+    output = _pactl([
         "load-module", "module-combine-sink",
         "sink_name=wakey_combined",
         "sink_properties=device.description=Wakey_Combined",
         "slaves=" + slaves,
     ])
+    logger.info("load-module result: %s", output.strip())
 
     # Set as default
     _pactl(["set-default-sink", "wakey_combined"])
@@ -208,6 +220,48 @@ def remove_combined_sink() -> None:
             module_id = parts[0]
             _pactl(["unload-module", module_id])
             logger.info("Removed combined sink module %s", module_id)
+
+
+def _mac_to_sink(mac: str) -> str:
+    """Convert MAC address to PulseAudio bluez sink name."""
+    return "bluez_sink." + mac.replace(":", "_") + ".a2dp_sink"
+
+
+def get_sink_volumes() -> list[dict]:
+    """Get volume for each connected BT sink. Returns [{mac, name, volume}]."""
+    connected = get_connected_devices()
+    result = []
+    for dev in connected:
+        sink = _mac_to_sink(dev["mac"])
+        vol = _get_sink_volume(sink)
+        result.append({
+            "mac": dev["mac"],
+            "name": dev["name"],
+            "volume": vol,
+        })
+    return result
+
+
+def _get_sink_volume(sink_name: str) -> int:
+    """Get volume percentage for a specific sink."""
+    output = _pactl(["get-sink-volume", sink_name])
+    # Output like: Volume: front-left: 28835 /  44% / -7.13 dB, ...
+    for part in output.split("/"):
+        part = part.strip()
+        if part.endswith("%"):
+            try:
+                return int(part[:-1].strip())
+            except ValueError:
+                pass
+    return 50  # fallback
+
+
+def set_sink_volume(mac: str, volume: int) -> bool:
+    """Set volume for a specific BT device by MAC address."""
+    sink = _mac_to_sink(mac)
+    volume = max(0, min(100, volume))
+    _pactl(["set-sink-volume", sink, str(volume) + "%"])
+    return True
 
 
 def _extract_error(output: str) -> str:

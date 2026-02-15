@@ -49,3 +49,29 @@ async def disconnect(body: dict) -> dict:
     if not mac:
         return {"ok": False, "error": "MAC address required"}
     return await bluetooth.disconnect_device(mac)
+
+
+@router.get("/volumes")
+async def get_volumes() -> list[dict]:
+    """Get volume for each connected BT speaker."""
+    return bluetooth.get_sink_volumes()
+
+
+@router.post("/volume")
+async def set_volume(body: dict) -> dict:
+    """Set volume for a specific BT speaker."""
+    mac = body.get("mac", "")
+    volume = body.get("volume", 50)
+    if not mac:
+        return {"ok": False, "error": "MAC address required"}
+    bluetooth.set_sink_volume(mac, volume)
+    return {"ok": True}
+
+
+@router.post("/setup-combined")
+async def setup_combined() -> dict:
+    """Manually trigger combined sink setup."""
+    import asyncio
+    loop = asyncio.get_event_loop()
+    ok = await loop.run_in_executor(None, bluetooth.setup_combined_sink)
+    return {"ok": ok}

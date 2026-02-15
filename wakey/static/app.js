@@ -781,22 +781,81 @@
     for (var i = 0; i < devices.length; i++) {
       var d = devices[i];
       html += '<div class="bt-connected-card">' +
-        '<div class="bt-connected-dot"></div>' +
-        '<span class="bt-connected-name">' + d.name + '</span>' +
-        '<button class="btn btn-stop" data-mac="' + d.mac + '" data-action="disconnect">Disconnect</button>' +
+        '<div class="bt-connected-info">' +
+          '<div class="bt-connected-dot"></div>' +
+          '<span class="bt-connected-name">' + d.name + '</span>' +
+          '<button class="btn btn-stop" data-mac="' + d.mac + '" data-action="disconnect">Disconnect</button>' +
+        '</div>' +
+        '<div class="bt-volume-row">' +
+          '<span class="bt-vol-label">Vol <span class="bt-vol-val" data-mac="' + d.mac + '">--</span>%</span>' +
+          '<input type="range" min="0" max="100" value="50" class="bt-vol-slider" data-mac="' + d.mac + '">' +
+        '</div>' +
       '</div>';
     }
     if (devices.length > 1) {
+      html += '<button class="btn btn-small" id="btn-setup-combined" style="margin-top:6px">Setup Multi-Speaker</button>';
       html += '<div class="hint" style="margin-top:4px">Audio plays on all ' + devices.length + ' speakers simultaneously</div>';
     }
     el.innerHTML = html;
 
-    var btns = el.querySelectorAll("button");
-    for (var j = 0; j < btns.length; j++) {
-      btns[j].addEventListener("click", function () {
+    // Disconnect buttons
+    var disconnectBtns = el.querySelectorAll('[data-action="disconnect"]');
+    for (var j = 0; j < disconnectBtns.length; j++) {
+      disconnectBtns[j].addEventListener("click", function () {
         btAction(this.getAttribute("data-mac"), "disconnect");
       });
     }
+
+    // Setup combined button
+    var combBtn = document.getElementById("btn-setup-combined");
+    if (combBtn) {
+      combBtn.addEventListener("click", function () {
+        this.disabled = true;
+        this.textContent = "Setting up...";
+        json("POST", "/api/bluetooth/setup-combined", {}).then(function (data) {
+          var s = $("#bt-status");
+          if (data.ok) {
+            s.textContent = "Multi-speaker enabled!";
+            s.className = "status-msg ok";
+          } else {
+            s.textContent = "Could not set up combined sink";
+            s.className = "status-msg err";
+          }
+          loadBtStatus();
+        });
+      });
+    }
+
+    // Load volumes
+    loadBtVolumes();
+  }
+
+  function loadBtVolumes() {
+    fetch("/api/bluetooth/volumes")
+      .then(function (r) { return r.json(); })
+      .then(function (vols) {
+        for (var i = 0; i < vols.length; i++) {
+          var v = vols[i];
+          var slider = document.querySelector('.bt-vol-slider[data-mac="' + v.mac + '"]');
+          var valEl = document.querySelector('.bt-vol-val[data-mac="' + v.mac + '"]');
+          if (slider) slider.value = v.volume;
+          if (valEl) valEl.textContent = v.volume;
+        }
+        // Attach slider events after values are loaded
+        var sliders = document.querySelectorAll(".bt-vol-slider");
+        for (var j = 0; j < sliders.length; j++) {
+          sliders[j].addEventListener("input", function () {
+            var mac = this.getAttribute("data-mac");
+            var valEl = document.querySelector('.bt-vol-val[data-mac="' + mac + '"]');
+            if (valEl) valEl.textContent = this.value;
+          });
+          sliders[j].addEventListener("change", function () {
+            var mac = this.getAttribute("data-mac");
+            json("POST", "/api/bluetooth/volume", { mac: mac, volume: parseInt(this.value) });
+          });
+        }
+      })
+      .catch(function () {});
   }
 
   $("#btn-bt-scan").addEventListener("click", function () {
