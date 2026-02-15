@@ -6,7 +6,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
-from . import audio, hue
+from . import audio, hue, spotify
 from .config import load_config
 from .models import Alarm, AlarmState, AppState
 
@@ -71,7 +71,12 @@ async def _run_audio(alarm: Alarm, delay_seconds: int) -> None:
         state.audio_start = datetime.now(timezone.utc).isoformat()
 
         if alarm.audio.enabled:
-            await audio.start_playback(alarm.audio)
+            if alarm.audio.source == "spotify" and alarm.audio.spotify_uri:
+                await spotify.play(uri=alarm.audio.spotify_uri)
+                vol = int(alarm.audio.volume / 100 * 65535)
+                await spotify.set_volume(vol)
+            else:
+                await audio.start_playback(alarm.audio)
     except asyncio.CancelledError:
         pass
     except Exception:
@@ -92,6 +97,7 @@ async def dismiss() -> None:
     logger.info("Dismissing alarm")
     _cancel_tasks()
     audio.stop_playback()
+    await spotify.stop()
     _reset_state()
 
 
@@ -101,6 +107,7 @@ async def snooze(alarm: Alarm) -> None:
 
     logger.info("Snoozing alarm for %d minutes", alarm.snooze_minutes)
     audio.stop_playback()
+    await spotify.stop()
     if _audio_task:
         _audio_task.cancel()
     if _auto_stop_task:
@@ -120,7 +127,12 @@ async def _run_snooze_resume(alarm: Alarm) -> None:
         state.state = AlarmState.ACTIVE
         state.audio_start = datetime.now(timezone.utc).isoformat()
         if alarm.audio.enabled:
-            await audio.start_playback(alarm.audio)
+            if alarm.audio.source == "spotify" and alarm.audio.spotify_uri:
+                await spotify.play(uri=alarm.audio.spotify_uri)
+                vol = int(alarm.audio.volume / 100 * 65535)
+                await spotify.set_volume(vol)
+            else:
+                await audio.start_playback(alarm.audio)
     except asyncio.CancelledError:
         pass
 

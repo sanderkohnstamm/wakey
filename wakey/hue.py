@@ -156,16 +156,19 @@ async def sunrise_ramp(gcfg: GlobalHueConfig, alarm_hue: HueConfig, duration_min
 
     Steps every 30 seconds. transitiontime=300 (30s in deciseconds).
     Brightness: 1 -> 254, Color temp: 500 -> 153 mired.
+    Supports multiple rooms.
     """
-    if not gcfg.bridge_ip or not gcfg.username or not alarm_hue.room_id:
+    # Build room list: prefer rooms list, fall back to single room_id
+    rooms = alarm_hue.rooms or ([{"id": alarm_hue.room_id}] if alarm_hue.room_id else [])
+    if not gcfg.bridge_ip or not gcfg.username or not rooms:
         logger.warning("Hue not configured, skipping sunrise ramp")
         return
 
     total_steps = max(1, (duration_minutes * 60) // 30)
-    url = f"{_bridge_url(gcfg)}/groups/{alarm_hue.room_id}/action"
+    room_names = ", ".join(r.get("name", r.get("id", "?")) for r in rooms)
 
-    logger.info("Starting sunrise ramp: %d steps over %d min for room %s",
-                total_steps, duration_minutes, alarm_hue.room_name or alarm_hue.room_id)
+    logger.info("Starting sunrise ramp: %d steps over %d min for rooms: %s",
+                total_steps, duration_minutes, room_names)
 
     async with httpx.AsyncClient(timeout=5) as client:
         for step in range(total_steps + 1):
@@ -179,14 +182,26 @@ async def sunrise_ramp(gcfg: GlobalHueConfig, alarm_hue: HueConfig, duration_min
                 "ct": ct,
                 "transitiontime": 300,  # 30s
             }
-            try:
-                await client.put(url, json=body)
-                logger.debug("Sunrise step %d/%d: bri=%d ct=%d", step, total_steps, bri, ct)
-            except Exception:
-                logger.warning("Sunrise step %d failed, continuing", step)
+            for room in rooms:
+                url = f"{_bridge_url(gcfg)}/groups/{room['id']}/action"
+                try:
+                    await client.put(url, json=body)
+                    logger.debug("Sunrise step %d/%d room %s: bri=%d ct=%d",
+                                 step, total_steps, room.get("name", room["id"]), bri, ct)
+                except Exception:
+                    logger.warning("Sunrise step %d failed for room %s, continuing",
+                                   step, room.get("id"))
 
             if step < total_steps:
                 await asyncio.sleep(30)
+
+    # Activate scene at end of ramp if configured
+    if alarm_hue.scene_id:
+        for room in rooms:
+            logger.info("Activating scene %s in room %s",
+                        alarm_hue.scene_name or alarm_hue.scene_id,
+                        room.get("name", room["id"]))
+            await activate_scene(gcfg, room["id"], alarm_hue.scene_id)
 
     logger.info("Sunrise ramp complete")
 

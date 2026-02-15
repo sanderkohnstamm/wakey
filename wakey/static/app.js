@@ -193,7 +193,8 @@
     $("#btn-delete-alarm").style.display = "none";
     resetForm();
     loadStations($("#f-station"), null);
-    loadHueRoomsForEdit(null);
+    loadSpotifyPresetsForEdit("");
+    loadHueRoomsForEdit([]);
     showView("edit");
   });
 
@@ -216,12 +217,23 @@
           pills[i].classList.toggle("active", a.days.indexOf(day) !== -1);
         }
 
+        // Source toggle
+        var source = a.audio.source || "radio";
+        setSourceToggle(source);
+
         loadStations($("#f-station"), a.audio.station);
+        loadSpotifyPresetsForEdit(a.audio.spotify_uri);
         $("#f-volume").value = a.audio.volume;
         $("#f-volume-val").textContent = a.audio.volume;
 
         $("#f-hue-enabled").checked = a.hue.enabled;
-        loadHueRoomsForEdit(a.hue.room_id);
+        // Multi-room: pass rooms list and fall back to single room
+        var rooms = a.hue.rooms || [];
+        if (rooms.length === 0 && a.hue.room_id) {
+          rooms = [{ id: a.hue.room_id, name: a.hue.room_name || "" }];
+        }
+        loadHueRoomsForEdit(rooms);
+        loadHueScenesForEdit(rooms, a.hue.scene_id);
         $("#f-hue-offset").value = a.hue.offset_minutes;
         $("#f-offset-val").textContent = a.hue.offset_minutes;
 
@@ -242,10 +254,12 @@
       var day = parseInt(pills[i].getAttribute("data-day"));
       pills[i].classList.toggle("active", day < 5);
     }
+    setSourceToggle("radio");
     $("#f-volume").value = 70;
     $("#f-volume-val").textContent = "70";
     $("#f-hue-enabled").checked = true;
-    $("#f-hue-room").innerHTML = '<option value="">--</option>';
+    $("#f-hue-rooms").innerHTML = "";
+    $("#f-hue-scene").innerHTML = '<option value="">None</option>';
     $("#f-hue-offset").value = 20;
     $("#f-offset-val").textContent = "20";
     $("#f-snooze").value = 9;
@@ -254,25 +268,123 @@
     $("#f-autostop-val").textContent = "30";
   }
 
-  function loadHueRoomsForEdit(selectedId) {
-    var sel = $("#f-hue-room");
-    sel.innerHTML = '<option value="">Loading...</option>';
+  function loadHueRoomsForEdit(selectedRooms) {
+    // selectedRooms: array of {id, name} that should be checked
+    if (!selectedRooms) selectedRooms = [];
+    var container = $("#f-hue-rooms");
+    container.innerHTML = '<span class="hint">Loading rooms...</span>';
     fetch("/api/hue/rooms")
       .then(function (r) { return r.json(); })
       .then(function (rooms) {
         if (rooms.length === 0) {
-          sel.innerHTML = '<option value="">No rooms (configure Hue first)</option>';
+          container.innerHTML = '<span class="hint">No rooms (configure Hue first)</span>';
           return;
+        }
+        var selectedIds = {};
+        for (var s = 0; s < selectedRooms.length; s++) {
+          selectedIds[selectedRooms[s].id] = true;
         }
         var html = "";
         for (var i = 0; i < rooms.length; i++) {
           var r = rooms[i];
-          html += '<option value="' + r.id + '"' + (r.id === selectedId ? " selected" : "") + '>' + r.name + '</option>';
+          var checked = selectedIds[r.id] ? " checked" : "";
+          html += '<label class="room-checkbox">' +
+            '<input type="checkbox" data-room-id="' + r.id + '" data-room-name="' + r.name + '"' + checked + '> ' +
+            r.name +
+          '</label>';
+        }
+        container.innerHTML = html;
+        // When rooms change, reload scenes
+        var boxes = container.querySelectorAll("input");
+        for (var j = 0; j < boxes.length; j++) {
+          boxes[j].addEventListener("change", function () {
+            var sel = getSelectedRooms();
+            loadHueScenesForEdit(sel, "");
+          });
+        }
+      })
+      .catch(function () {
+        container.innerHTML = '<span class="hint">Error loading rooms</span>';
+      });
+  }
+
+  function getSelectedRooms() {
+    var boxes = $$("#f-hue-rooms input:checked");
+    var rooms = [];
+    for (var i = 0; i < boxes.length; i++) {
+      rooms.push({
+        id: boxes[i].getAttribute("data-room-id"),
+        name: boxes[i].getAttribute("data-room-name")
+      });
+    }
+    return rooms;
+  }
+
+  function loadHueScenesForEdit(rooms, selectedSceneId) {
+    var sel = $("#f-hue-scene");
+    if (!rooms || rooms.length === 0) {
+      sel.innerHTML = '<option value="">None</option>';
+      return;
+    }
+    // Load scenes for the first selected room
+    var roomId = rooms[0].id;
+    sel.innerHTML = '<option value="">Loading...</option>';
+    fetch("/api/hue/rooms/" + roomId + "/scenes")
+      .then(function (r) { return r.json(); })
+      .then(function (scenes) {
+        var html = '<option value="">None</option>';
+        for (var i = 0; i < scenes.length; i++) {
+          var s = scenes[i];
+          var selected = (s.id === selectedSceneId) ? " selected" : "";
+          html += '<option value="' + s.id + '" data-name="' + s.name + '"' + selected + '>' + s.name + '</option>';
         }
         sel.innerHTML = html;
       })
       .catch(function () {
-        sel.innerHTML = '<option value="">Error loading rooms</option>';
+        sel.innerHTML = '<option value="">None</option>';
+      });
+  }
+
+  // ── Source toggle ──
+
+  function setSourceToggle(source) {
+    var btns = $$("#f-source-toggle .source-btn");
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle("active", btns[i].getAttribute("data-source") === source);
+    }
+    $("#f-source-radio").style.display = source === "radio" ? "" : "none";
+    $("#f-source-spotify").style.display = source === "spotify" ? "" : "none";
+  }
+
+  function getSelectedSource() {
+    var active = $("#f-source-toggle .source-btn.active");
+    return active ? active.getAttribute("data-source") : "radio";
+  }
+
+  // Source toggle click handlers
+  var srcBtns = $$("#f-source-toggle .source-btn");
+  for (var si = 0; si < srcBtns.length; si++) {
+    srcBtns[si].addEventListener("click", function () {
+      setSourceToggle(this.getAttribute("data-source"));
+    });
+  }
+
+  function loadSpotifyPresetsForEdit(selectedUri) {
+    var sel = $("#f-spotify-preset");
+    sel.innerHTML = '<option value="">Loading...</option>';
+    fetch("/api/spotify/presets")
+      .then(function (r) { return r.json(); })
+      .then(function (presets) {
+        var html = '<option value="">-- Select --</option>';
+        for (var i = 0; i < presets.length; i++) {
+          var p = presets[i];
+          var selected = (p.uri === selectedUri) ? " selected" : "";
+          html += '<option value="' + p.uri + '" data-name="' + p.name + '"' + selected + '>' + p.name + '</option>';
+        }
+        sel.innerHTML = html;
+      })
+      .catch(function () {
+        sel.innerHTML = '<option value="">-- No presets --</option>';
       });
   }
 
@@ -293,7 +405,7 @@
   $("#f-autostop").addEventListener("input", function () { $("#f-autostop-val").textContent = this.value; });
 
   $("#btn-refresh-rooms").addEventListener("click", function () {
-    loadHueRoomsForEdit(null);
+    loadHueRoomsForEdit([]);
   });
 
   // ── Stations loader (reusable) ──
@@ -323,21 +435,38 @@
       days.push(parseInt(activePills[i].getAttribute("data-day")));
     }
 
-    var roomSel = $("#f-hue-room");
-    var roomOption = roomSel.options[roomSel.selectedIndex];
+    var selectedRooms = getSelectedRooms();
+    var firstRoom = selectedRooms.length > 0 ? selectedRooms[0] : { id: "", name: "" };
+
+    var sceneSel = $("#f-hue-scene");
+    var sceneOption = sceneSel.options[sceneSel.selectedIndex];
+    var sceneId = sceneSel.value;
+    var sceneName = (sceneOption && sceneId) ? sceneOption.textContent : "";
+
+    var source = getSelectedSource();
+    var spotifySel = $("#f-spotify-preset");
+    var spotifyOption = spotifySel.options[spotifySel.selectedIndex];
+    var spotifyUri = spotifySel.value || "";
+    var spotifyName = (spotifyOption && spotifyUri) ? spotifyOption.textContent : "";
 
     var body = {
       time: $("#f-time").value,
       label: $("#f-label").value,
       days: days,
       hue: {
-        room_id: roomSel.value,
-        room_name: roomOption ? roomOption.textContent : "",
+        room_id: firstRoom.id,
+        room_name: firstRoom.name,
+        rooms: selectedRooms,
+        scene_id: sceneId,
+        scene_name: sceneName,
         offset_minutes: parseInt($("#f-hue-offset").value),
         enabled: $("#f-hue-enabled").checked
       },
       audio: {
+        source: source,
         station: $("#f-station").value,
+        spotify_uri: spotifyUri,
+        spotify_name: spotifyName,
         volume: parseInt($("#f-volume").value),
         ramp_seconds: 30,
         enabled: true
@@ -481,6 +610,9 @@
         indicator.className = "radio-indicator live";
         $("#radio-status").textContent = "";
         $("#radio-status").className = "status-msg";
+        // Mutual exclusion: Spotify was stopped by backend, update UI
+        $("#spotify-active").style.display = "none";
+        $("#spotify-idle").style.display = "";
       } else {
         radioPlaying = false;
         np.textContent = "Failed to play";
@@ -621,7 +753,7 @@
           loadSpotifyPresets();
         }
 
-        if (data.stopped && !data.track) {
+        if (data.stopped && !data.track && !data.playing) {
           // Connected but nothing playing, no session
           $("#spotify-idle").style.display = "";
           $("#spotify-active").style.display = "none";
@@ -639,6 +771,9 @@
         if (data.track) {
           trackEl.textContent = data.track;
           artistEl.textContent = data.artist || "";
+        } else if (data.playing) {
+          trackEl.textContent = "Playing...";
+          artistEl.textContent = "";
         } else {
           trackEl.textContent = "Not playing";
           artistEl.textContent = "";
@@ -1138,8 +1273,15 @@
         var uri = this.getAttribute("data-uri");
         this.style.opacity = "0.5";
         var self = this;
-        json("POST", "/api/spotify/play", { uri: uri }).then(function () {
+        json("POST", "/api/spotify/play", { uri: uri }).then(function (data) {
           self.style.opacity = "";
+          if (data.ok) {
+            // Mutual exclusion: radio was stopped by backend, update UI
+            radioPlaying = false;
+            $("#radio-indicator").className = "radio-indicator";
+            $("#radio-now-playing").textContent = "Select a station";
+            $("#radio-now-playing").className = "radio-now-playing";
+          }
           setTimeout(pollSpotifyStatus, 500);
         });
       });

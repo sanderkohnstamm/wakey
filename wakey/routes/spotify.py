@@ -22,7 +22,8 @@ async def status() -> dict:
         return {"available": True, "playing": False}
 
     # Parse go-librespot status into a clean response
-    track = data.get("track", {})
+    # Try multiple field names for track info
+    track = data.get("track") or data.get("item") or data.get("current_track") or {}
     result = {
         "available": True,
         "username": data.get("username", ""),
@@ -31,6 +32,7 @@ async def status() -> dict:
         "stopped": data.get("stopped", True),
         "shuffle": data.get("shuffle_context", False),
         "repeat": data.get("repeat_context", False),
+        "_debug": data,
     }
     if track:
         result["track"] = track.get("name", "")
@@ -44,9 +46,15 @@ async def status() -> dict:
 @router.post("/play")
 async def play(body: dict) -> dict:
     """Start playback. Optional: uri (spotify URI for playlist/album/track)."""
+    from .. import audio
+    # Stop radio before playing Spotify (mutual exclusion)
+    audio.stop_playback()
+
     uri = body.get("uri")
     ok = await spotify.play(uri=uri)
-    return {"ok": ok}
+    if not ok:
+        return {"ok": False, "error": "Failed to start Spotify playback. Is go-librespot running?"}
+    return {"ok": True}
 
 
 @router.post("/pause")

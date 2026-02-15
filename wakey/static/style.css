@@ -450,6 +450,64 @@ input[type="checkbox"] {
   font-weight: 600;
 }
 
+/* ── Source toggle (alarm edit) ── */
+
+.source-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.source-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 10px 0;
+  cursor: pointer;
+  -webkit-appearance: none;
+  transition: all 0.15s;
+}
+.source-btn.active {
+  background: var(--primary-dim);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ── Room checkboxes (alarm edit) ── */
+
+.room-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+  margin-bottom: 10px;
+}
+.room-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+  min-width: 0;
+}
+.room-checkbox input:checked ~ * {
+  color: var(--primary);
+}
+.room-checkbox:has(input:checked) {
+  background: var(--primary-dim);
+  border-color: var(--primary);
+}
+
 /* ── Music tabs ── */
 
 .music-tabs {

@@ -67,10 +67,25 @@
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="f-station">Radio Station</label>
-        <select id="f-station"></select>
-      </div>
+      <fieldset class="form-group">
+        <legend>Audio Source</legend>
+        <div class="source-toggle" id="f-source-toggle">
+          <button type="button" class="source-btn active" data-source="radio">Radio</button>
+          <button type="button" class="source-btn" data-source="spotify">Spotify</button>
+        </div>
+        <div id="f-source-radio">
+          <div class="form-row">
+            <label for="f-station">Station</label>
+            <select id="f-station"></select>
+          </div>
+        </div>
+        <div id="f-source-spotify" style="display:none">
+          <div class="form-row">
+            <label for="f-spotify-preset">Preset</label>
+            <select id="f-spotify-preset"><option value="">-- Select --</option></select>
+          </div>
+        </div>
+      </fieldset>
 
       <div class="form-group">
         <label for="f-volume">Volume <span id="f-volume-val">70</span>%</label>
@@ -86,9 +101,13 @@
           </label>
         </div>
         <div class="form-row">
-          <label for="f-hue-room">Room</label>
-          <select id="f-hue-room"><option value="">--</option></select>
+          <label>Rooms</label>
           <button type="button" class="btn btn-small" id="btn-refresh-rooms">Refresh</button>
+        </div>
+        <div id="f-hue-rooms" class="room-checkboxes"></div>
+        <div class="form-row">
+          <label for="f-hue-scene">Scene (after sunrise)</label>
+          <select id="f-hue-scene"><option value="">None</option></select>
         </div>
         <div class="form-row">
           <label for="f-hue-offset">Start <span id="f-offset-val">20</span> min before</label>

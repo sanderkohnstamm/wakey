@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from .. import audio
+from .. import audio, spotify
 from ..config import load_config, save_config
 from ..models import AudioConfig, RADIO_STATIONS
 
@@ -34,6 +34,8 @@ async def test_radio(body: dict) -> dict:
     volume = body.get("volume", 50)
     if station_id not in RADIO_STATIONS:
         return {"ok": False, "error": "Unknown station"}
+    # Stop Spotify before playing radio (mutual exclusion)
+    await spotify.stop()
     cfg = AudioConfig(station=station_id, volume=volume, ramp_seconds=0)
     err = await audio.start_playback(cfg)
     if err:

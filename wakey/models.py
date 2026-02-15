@@ -25,12 +25,18 @@ class GlobalHueConfig(BaseModel):
 class HueConfig(BaseModel):
     room_id: str = ""
     room_name: str = ""
+    rooms: list[dict] = Field(default_factory=list)  # [{"id": "1", "name": "Bedroom"}, ...]
+    scene_id: str = ""
+    scene_name: str = ""
     offset_minutes: int = 20
     enabled: bool = True
 
 
 class AudioConfig(BaseModel):
+    source: str = "radio"       # "radio" or "spotify"
     station: str = "npo_radio_1"
+    spotify_uri: str = ""       # e.g. "spotify:playlist:abc123"
+    spotify_name: str = ""      # display name
     volume: int = 70  # target volume %
     ramp_seconds: int = 30
     enabled: bool = True

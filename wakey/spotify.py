@@ -20,6 +20,7 @@ API_BASE = "http://127.0.0.1:3678"
 async def _api(method: str, path: str, json_body: dict | None = None) -> dict | None:
     """Make a request to the go-librespot local API."""
     try:
+        logger.debug("go-librespot %s %s body=%s", method, path, json_body)
         async with httpx.AsyncClient(timeout=5) as client:
             if method == "GET":
                 resp = await client.get(API_BASE + path)
@@ -29,13 +30,17 @@ async def _api(method: str, path: str, json_body: dict | None = None) -> dict | 
                 return None
 
         if resp.status_code == 204:
+            logger.debug("go-librespot %s %s -> 204", method, path)
             return {"ok": True}
         if resp.status_code >= 400:
-            logger.warning("go-librespot %s %s → %d: %s",
+            logger.warning("go-librespot %s %s -> %d: %s",
                            method, path, resp.status_code, resp.text[:200])
-            return None
+            return {"_error": resp.text[:200], "_status": resp.status_code}
         try:
-            return resp.json()
+            data = resp.json()
+            logger.debug("go-librespot %s %s -> %s", method, path,
+                         str(data)[:300])
+            return data
         except Exception:
             return {"ok": True}
     except httpx.ConnectError:
@@ -53,7 +58,9 @@ async def is_available() -> bool:
 
 async def get_status() -> dict | None:
     """Get full player status including track info."""
-    return await _api("GET", "/status")
+    data = await _api("GET", "/status")
+    logger.debug("go-librespot raw status: %s", str(data)[:500] if data else None)
+    return data
 
 
 async def play(uri: str | None = None) -> bool:
@@ -62,37 +69,43 @@ async def play(uri: str | None = None) -> bool:
         data = await _api("POST", "/player/play", {"uri": uri})
     else:
         data = await _api("POST", "/player/resume")
-    return data is not None
+    return data is not None and "_error" not in data
 
 
 async def pause() -> bool:
     """Pause playback."""
     data = await _api("POST", "/player/pause")
-    return data is not None
+    return data is not None and "_error" not in data
+
+
+async def stop() -> bool:
+    """Stop/pause Spotify playback."""
+    data = await _api("POST", "/player/pause")
+    return data is not None and "_error" not in data
 
 
 async def play_pause() -> bool:
     """Toggle play/pause."""
     data = await _api("POST", "/player/playpause")
-    return data is not None
+    return data is not None and "_error" not in data
 
 
 async def skip_next() -> bool:
     """Skip to next track."""
     data = await _api("POST", "/player/next")
-    return data is not None
+    return data is not None and "_error" not in data
 
 
 async def skip_prev() -> bool:
     """Skip to previous track."""
     data = await _api("POST", "/player/prev")
-    return data is not None
+    return data is not None and "_error" not in data
 
 
 async def set_volume(volume: int) -> bool:
     """Set volume (0 to max, typically 65535)."""
     data = await _api("POST", "/player/volume", {"volume": volume})
-    return data is not None
+    return data is not None and "_error" not in data
 
 
 async def get_volume() -> dict | None:
@@ -103,13 +116,13 @@ async def get_volume() -> dict | None:
 async def set_shuffle(enabled: bool) -> bool:
     """Toggle shuffle."""
     data = await _api("POST", "/player/shuffle_context", {"shuffle_context": enabled})
-    return data is not None
+    return data is not None and "_error" not in data
 
 
 async def set_repeat(enabled: bool) -> bool:
     """Toggle repeat."""
     data = await _api("POST", "/player/repeat_context", {"repeat_context": enabled})
-    return data is not None
+    return data is not None and "_error" not in data
 
 
 def parse_spotify_input(text: str) -> str | None:
