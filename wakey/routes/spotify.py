@@ -11,11 +11,9 @@ router = APIRouter(prefix="/api/spotify")
 
 
 @router.get("/auth-url")
-async def auth_url(request: Request) -> dict:
-    """Get the Spotify authorization URL."""
-    base = str(request.base_url).rstrip("/")
-    redirect_uri = base + "/api/spotify/callback"
-    url = spotify.get_auth_url(redirect_uri)
+async def auth_url() -> dict:
+    """Get the Spotify authorization URL (uses localhost redirect)."""
+    url = spotify.get_auth_url()
     if not url:
         return {"ok": False, "error": "Configure Spotify client ID first"}
     return {"ok": True, "url": url}
@@ -23,20 +21,27 @@ async def auth_url(request: Request) -> dict:
 
 @router.get("/callback", response_class=HTMLResponse)
 async def callback(request: Request, code: str = "", error: str = "") -> str:
-    """OAuth callback from Spotify."""
+    """OAuth callback from Spotify (only works when accessed from localhost)."""
     if error:
         return _callback_page("Spotify authorization failed: " + error, False)
 
     if not code:
         return _callback_page("No authorization code received", False)
 
-    base = str(request.base_url).rstrip("/")
-    redirect_uri = base + "/api/spotify/callback"
-    result = await spotify.exchange_code(code, redirect_uri)
+    result = await spotify.exchange_code(code)
 
     if result.get("ok"):
-        return _callback_page("Spotify connected!", True)
+        return _callback_page("Spotify connected! You can close this tab.", True)
     return _callback_page(result.get("error", "Unknown error"), False)
+
+
+@router.post("/exchange-code")
+async def exchange_code(body: dict) -> dict:
+    """Manually exchange an authorization code (for when redirect doesn't reach server)."""
+    code = body.get("code", "").strip()
+    if not code:
+        return {"ok": False, "error": "No code provided"}
+    return await spotify.exchange_code(code)
 
 
 def _callback_page(message: str, success: bool) -> str:

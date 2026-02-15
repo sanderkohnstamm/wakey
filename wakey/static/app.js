@@ -637,9 +637,42 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (data.ok && data.url) {
-          window.location.href = data.url;
+          // Open in new tab so user can copy code from URL
+          window.open(data.url, "_blank");
+          // Show the code entry field
+          $("#spotify-code-entry").style.display = "";
         }
       });
+  });
+
+  // Manual code entry
+  $("#btn-spotify-code").addEventListener("click", function () {
+    var codeInput = $("#spotify-code-input");
+    var code = codeInput.value.trim();
+    if (!code) return;
+
+    // If user pasted the full URL, extract the code param
+    if (code.indexOf("code=") !== -1) {
+      var match = code.match(/[?&]code=([^&]+)/);
+      if (match) code = match[1];
+    }
+
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = "Connecting...";
+
+    json("POST", "/api/spotify/exchange-code", { code: code }).then(function (data) {
+      btn.disabled = false;
+      btn.textContent = "Submit Code";
+      if (data.ok) {
+        codeInput.value = "";
+        $("#spotify-code-entry").style.display = "none";
+        loadSpotifyPanel();
+      } else {
+        codeInput.value = "";
+        codeInput.placeholder = data.error || "Failed - try again";
+      }
+    });
   });
 
   // Disconnect
@@ -932,11 +965,9 @@
     $("#spotify-status").textContent = "";
     $("#spotify-status").className = "status-msg";
 
-    // Show redirect URI hint
-    var hint = $("#spotify-redirect-hint");
-    if (hint) {
-      hint.textContent = window.location.origin + "/api/spotify/callback";
-    }
+    // Reset spotify code entry
+    var codeEntry = $("#spotify-code-entry");
+    if (codeEntry) codeEntry.style.display = "none";
   }
 
   // Generate Hue API key

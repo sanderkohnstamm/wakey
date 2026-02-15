@@ -152,6 +152,11 @@
         </div>
         <div id="spotify-login-panel" class="spotify-login-panel" style="display:none">
           <button class="btn btn-spotify" id="btn-spotify-login">Connect Spotify</button>
+          <p class="hint" style="margin-top:12px">After logging in, you'll be redirected to a page that may not load.<br>Copy the <strong>code</strong> from the URL and paste it below.</p>
+          <div class="spotify-code-entry" id="spotify-code-entry" style="display:none">
+            <input type="text" id="spotify-code-input" placeholder="Paste code from URL here">
+            <button class="btn btn-save" id="btn-spotify-code" style="margin-top:8px">Submit Code</button>
+          </div>
         </div>
       </div>
 
@@ -267,7 +272,7 @@
       <div class="config-actions">
         <button class="btn btn-save" id="btn-save-spotify">Save</button>
       </div>
-      <p class="hint">Create an app at developer.spotify.com. Add<br><code id="spotify-redirect-hint"></code><br>as redirect URI.</p>
+      <p class="hint">Create an app at developer.spotify.com. Add<br><code>http://localhost:8000/api/spotify/callback</code><br>as redirect URI.</p>
       <div id="spotify-status" class="status-msg"></div>
     </section>
   </div>

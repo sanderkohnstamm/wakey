@@ -26,22 +26,25 @@ SCOPES = " ".join([
 ])
 
 
-def get_auth_url(redirect_uri: str) -> str | None:
-    """Build Spotify authorization URL."""
+REDIRECT_URI = "http://localhost:8000/api/spotify/callback"
+
+
+def get_auth_url() -> str | None:
+    """Build Spotify authorization URL using localhost redirect."""
     cfg = load_config().spotify
     if not cfg.client_id:
         return None
     params = {
         "client_id": cfg.client_id,
         "response_type": "code",
-        "redirect_uri": redirect_uri,
+        "redirect_uri": REDIRECT_URI,
         "scope": SCOPES,
         "show_dialog": "false",
     }
     return AUTH_URL + "?" + urllib.parse.urlencode(params)
 
 
-async def exchange_code(code: str, redirect_uri: str) -> dict:
+async def exchange_code(code: str) -> dict:
     """Exchange authorization code for access + refresh tokens."""
     cfg = load_config()
     sp = cfg.spotify
@@ -56,7 +59,7 @@ async def exchange_code(code: str, redirect_uri: str) -> dict:
         resp = await client.post(TOKEN_URL, data={
             "grant_type": "authorization_code",
             "code": code,
-            "redirect_uri": redirect_uri,
+            "redirect_uri": REDIRECT_URI,
         }, headers={
             "Authorization": "Basic " + auth_header,
             "Content-Type": "application/x-www-form-urlencoded",
