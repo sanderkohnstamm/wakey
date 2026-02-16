@@ -547,13 +547,10 @@ input[type="checkbox"] {
 
 /* ── Warmth slider ── */
 
-.warmth-labels {
-  display: flex;
-  justify-content: space-between;
+.warmth-end {
   font-size: 0.7rem;
   color: var(--text-secondary);
-  margin-top: -4px;
-  padding: 0 2px;
+  flex-shrink: 0;
 }
 
 /* ── Music tabs ── */

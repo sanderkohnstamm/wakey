@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#111113">
   <title>Wakey</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css?v=2">
 </head>
 <body>
   <!-- Main View -->
@@ -108,11 +108,12 @@
           <label for="f-hue-scene">Scene (after sunrise)</label>
           <select id="f-hue-scene"><option value="">None</option></select>
         </div>
-        <div class="form-row">
-          <label for="f-hue-warmth">Warmth <span id="f-warmth-val">326</span></label>
-          <input type="range" id="f-hue-warmth" min="153" max="500" value="326" style="flex:1" class="warmth-slider">
+        <div class="form-row warmth-row">
+          <label>Warmth</label>
+          <span class="warmth-end">Cool</span>
+          <input type="range" id="f-hue-warmth" min="153" max="500" value="326" style="flex:1">
+          <span class="warmth-end">Warm</span>
         </div>
-        <div class="warmth-labels"><span>Cool</span><span>Warm</span></div>
         <div class="form-row">
           <label for="f-hue-offset">Start <span id="f-offset-val">20</span> min before</label>
           <input type="range" id="f-hue-offset" min="5" max="45" value="20" style="flex:1">
@@ -297,6 +298,6 @@
 
   </div>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=2"></script>
 </body>
 </html>
