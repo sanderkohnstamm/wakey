@@ -54,6 +54,20 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ── Connection banner ── */
+
+.connection-banner {
+  background: var(--danger-dim);
+  color: var(--danger);
+  text-align: center;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+.connection-banner.hidden {
+  display: none;
+}
+
 /* Views */
 .view {
   display: none;

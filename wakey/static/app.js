@@ -60,9 +60,17 @@
 
   function pollStatus() {
     fetch("/api/status")
-      .then(function (r) { return r.json(); })
-      .then(function (data) { updateStatusUI(data); })
-      .catch(function () {});
+      .then(function (r) {
+        if (!r.ok) throw new Error("status " + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        $("#connection-banner").classList.add("hidden");
+        updateStatusUI(data);
+      })
+      .catch(function () {
+        $("#connection-banner").classList.remove("hidden");
+      });
   }
 
   function updateStatusUI(data) {
