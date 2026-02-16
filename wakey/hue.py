@@ -174,7 +174,7 @@ async def sunrise_ramp(gcfg: GlobalHueConfig, alarm_hue: HueConfig, duration_min
         for step in range(total_steps + 1):
             t = step / total_steps  # 0.0 -> 1.0
             bri = int(1 + t * 253)
-            ct = int(500 - t * 347)  # 500 -> 153 mired
+            ct = int(500 - t * (500 - alarm_hue.warmth))  # 500 -> warmth mired
 
             body = {
                 "on": True,

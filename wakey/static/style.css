@@ -545,6 +545,17 @@ input[type="checkbox"] {
   border-color: var(--primary);
 }
 
+/* ── Warmth slider ── */
+
+.warmth-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-top: -4px;
+  padding: 0 2px;
+}
+
 /* ── Music tabs ── */
 
 .music-tabs {

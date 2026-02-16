@@ -28,6 +28,7 @@ class HueConfig(BaseModel):
     rooms: list[dict] = Field(default_factory=list)  # [{"id": "1", "name": "Bedroom"}, ...]
     scene_id: str = ""
     scene_name: str = ""
+    warmth: int = 326  # end CT in mired (153=cool daylight, 500=warm)
     offset_minutes: int = 20
     enabled: bool = True
 

@@ -68,7 +68,7 @@
       </div>
 
       <fieldset class="form-group">
-        <legend>Audio Source</legend>
+        <legend>Audio</legend>
         <div class="source-toggle" id="f-source-toggle">
           <button type="button" class="source-btn active" data-source="radio">Radio</button>
           <button type="button" class="source-btn" data-source="spotify">Spotify</button>
@@ -85,12 +85,11 @@
             <select id="f-spotify-preset"><option value="">-- Select --</option></select>
           </div>
         </div>
+        <div class="form-row">
+          <label for="f-volume">Volume <span id="f-volume-val">70</span>%</label>
+          <input type="range" id="f-volume" min="10" max="100" value="70" style="flex:1">
+        </div>
       </fieldset>
-
-      <div class="form-group">
-        <label for="f-volume">Volume <span id="f-volume-val">70</span>%</label>
-        <input type="range" id="f-volume" min="10" max="100" value="70">
-      </div>
 
       <fieldset class="form-group">
         <legend>Sunrise Lights</legend>
@@ -110,20 +109,27 @@
           <select id="f-hue-scene"><option value="">None</option></select>
         </div>
         <div class="form-row">
+          <label for="f-hue-warmth">Warmth <span id="f-warmth-val">326</span></label>
+          <input type="range" id="f-hue-warmth" min="153" max="500" value="326" style="flex:1" class="warmth-slider">
+        </div>
+        <div class="warmth-labels"><span>Cool</span><span>Warm</span></div>
+        <div class="form-row">
           <label for="f-hue-offset">Start <span id="f-offset-val">20</span> min before</label>
-          <input type="range" id="f-hue-offset" min="5" max="45" value="20">
+          <input type="range" id="f-hue-offset" min="5" max="45" value="20" style="flex:1">
         </div>
       </fieldset>
 
-      <div class="form-group">
-        <label for="f-snooze">Snooze <span id="f-snooze-val">9</span> min</label>
-        <input type="range" id="f-snooze" min="1" max="30" value="9">
-      </div>
-
-      <div class="form-group">
-        <label for="f-autostop">Auto-stop <span id="f-autostop-val">30</span> min</label>
-        <input type="range" id="f-autostop" min="5" max="60" value="30">
-      </div>
+      <fieldset class="form-group">
+        <legend>Advanced</legend>
+        <div class="form-row">
+          <label for="f-snooze">Snooze <span id="f-snooze-val">9</span> min</label>
+          <input type="range" id="f-snooze" min="1" max="30" value="9" style="flex:1">
+        </div>
+        <div class="form-row">
+          <label for="f-autostop">Auto-stop <span id="f-autostop-val">30</span> min</label>
+          <input type="range" id="f-autostop" min="5" max="60" value="30" style="flex:1">
+        </div>
+      </fieldset>
 
       <button type="submit" class="btn btn-save">Save</button>
     </form>

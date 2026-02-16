@@ -240,6 +240,9 @@
         }
         loadHueRoomsForEdit(rooms);
         loadHueScenesForEdit(rooms, a.hue.scene_id);
+        var warmth = a.hue.warmth !== undefined ? a.hue.warmth : 326;
+        $("#f-hue-warmth").value = warmth;
+        $("#f-warmth-val").textContent = warmth;
         $("#f-hue-offset").value = a.hue.offset_minutes;
         $("#f-offset-val").textContent = a.hue.offset_minutes;
 
@@ -266,6 +269,8 @@
     $("#f-hue-enabled").checked = true;
     $("#f-hue-rooms").innerHTML = "";
     $("#f-hue-scene").innerHTML = '<option value="">None</option>';
+    $("#f-hue-warmth").value = 326;
+    $("#f-warmth-val").textContent = "326";
     $("#f-hue-offset").value = 20;
     $("#f-offset-val").textContent = "20";
     $("#f-snooze").value = 9;
@@ -406,6 +411,7 @@
   // ── Range sliders ──
 
   $("#f-volume").addEventListener("input", function () { $("#f-volume-val").textContent = this.value; });
+  $("#f-hue-warmth").addEventListener("input", function () { $("#f-warmth-val").textContent = this.value; });
   $("#f-hue-offset").addEventListener("input", function () { $("#f-offset-val").textContent = this.value; });
   $("#f-snooze").addEventListener("input", function () { $("#f-snooze-val").textContent = this.value; });
   $("#f-autostop").addEventListener("input", function () { $("#f-autostop-val").textContent = this.value; });
@@ -465,6 +471,7 @@
         rooms: selectedRooms,
         scene_id: sceneId,
         scene_name: sceneName,
+        warmth: parseInt($("#f-hue-warmth").value),
         offset_minutes: parseInt($("#f-hue-offset").value),
         enabled: $("#f-hue-enabled").checked
       },
