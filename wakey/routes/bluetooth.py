@@ -26,6 +26,12 @@ def _remove_bt_mac(mac: str) -> None:
         save_config(cfg)
 
 
+@router.get("/nearby")
+async def nearby_devices() -> list[dict]:
+    """Return cached nearby BT devices (instant, from background scan)."""
+    return bluetooth.get_nearby_devices()
+
+
 @router.post("/scan")
 async def scan_devices() -> list[dict]:
     """Scan for nearby Bluetooth devices (~8 seconds)."""

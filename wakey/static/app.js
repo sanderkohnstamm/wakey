@@ -357,61 +357,34 @@
 
   function loadMusicBtSpeakers() {
     var el = $("#g-bt-speakers");
-    fetch("/api/bluetooth/status")
+    fetch("/api/bluetooth/nearby")
       .then(function (r) { return r.json(); })
-      .then(function (data) {
-        var connected = data.devices || [];
-        // Also load saved MACs from config to show previously known devices
-        return fetch("/api/config").then(function (r) { return r.json(); }).then(function (cfg) {
-          var savedMacs = cfg.bluetooth_devices || [];
-          renderMusicBtSpeakers(el, connected, savedMacs);
-        });
+      .then(function (devices) {
+        renderMusicBtSpeakers(el, devices);
       })
       .catch(function () {
         el.innerHTML = "";
       });
   }
 
-  function renderMusicBtSpeakers(el, connected, savedMacs) {
-    var connectedMacs = {};
-    for (var i = 0; i < connected.length; i++) {
-      connectedMacs[connected[i].mac] = connected[i].name;
-    }
-
-    // Build list: connected first, then saved-but-not-connected
-    var items = [];
-    for (var j = 0; j < connected.length; j++) {
-      items.push({ name: connected[j].name, mac: connected[j].mac, connected: true });
-    }
-    for (var k = 0; k < savedMacs.length; k++) {
-      if (!connectedMacs[savedMacs[k]]) {
-        items.push({ name: savedMacs[k], mac: savedMacs[k], connected: false });
-      }
-    }
-
-    if (items.length === 0) {
+  function renderMusicBtSpeakers(el, devices) {
+    if (!devices || devices.length === 0) {
       el.innerHTML = '<div class="section-header" style="margin-bottom:4px">Speakers</div>' +
-        '<span class="hint">No speakers known. Connect via Settings.</span>';
+        '<span class="hint">Scanning for speakers...</span>';
       return;
     }
 
     var html = '<div class="section-header" style="margin-bottom:6px">Speakers</div>';
-    for (var m = 0; m < items.length; m++) {
-      var item = items[m];
-      var dotClass = item.connected ? "connected" : "saved";
-      if (item.connected) {
-        html += '<div class="g-bt-speaker-row">' +
-          '<div class="g-bt-dot ' + dotClass + '"></div>' +
-          '<span class="g-bt-speaker-name">' + item.name + '</span>' +
-          '<button class="btn btn-small g-bt-action" data-mac="' + item.mac + '" data-action="disconnect">Disconnect</button>' +
-        '</div>';
-      } else {
-        html += '<div class="g-bt-speaker-row">' +
-          '<div class="g-bt-dot ' + dotClass + '"></div>' +
-          '<span class="g-bt-speaker-name">' + item.name + '</span>' +
-          '<button class="btn btn-small g-bt-action" data-mac="' + item.mac + '" data-action="connect">Connect</button>' +
-        '</div>';
-      }
+    for (var i = 0; i < devices.length; i++) {
+      var d = devices[i];
+      var dotClass = d.connected ? "connected" : "nearby";
+      var action = d.connected ? "disconnect" : "connect";
+      var label = d.connected ? "Disconnect" : "Connect";
+      html += '<div class="g-bt-speaker-row">' +
+        '<div class="g-bt-dot ' + dotClass + '"></div>' +
+        '<span class="g-bt-speaker-name">' + d.name + '</span>' +
+        '<button class="btn btn-small g-bt-action" data-mac="' + d.mac + '" data-action="' + action + '">' + label + '</button>' +
+      '</div>';
     }
     html += '<div id="g-bt-status" class="status-msg"></div>';
     el.innerHTML = html;
@@ -443,9 +416,10 @@
     }
   }
 
-  // Load on page load
+  // Load on page load and auto-refresh every 15s
   loadGlobalAudioConfig();
   loadMusicBtSpeakers();
+  setInterval(loadMusicBtSpeakers, 15000);
 
   // ═══════════════════════════════════════
   // ── Lights foldout (global config) ──

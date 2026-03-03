@@ -4,9 +4,43 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import subprocess
 
 logger = logging.getLogger(__name__)
+
+# Cached list of nearby devices from periodic scanning
+_scan_cache: list[dict] = []
+
+_MAC_RE = re.compile(
+    r"^([0-9A-Fa-f]{2}[:\-]){2,5}[0-9A-Fa-f]{2}$"
+)
+
+
+def _has_normal_name(device: dict) -> bool:
+    """Return True if the device name looks like a real name (not a MAC address)."""
+    name = device.get("name", "")
+    if not name:
+        return False
+    return not _MAC_RE.match(name)
+
+
+async def periodic_scan_loop(interval: int = 30) -> None:
+    """Periodically scan for BT devices and update the cache."""
+    global _scan_cache
+    while True:
+        try:
+            devices = await scan(duration=8)
+            _scan_cache = [d for d in devices if _has_normal_name(d)]
+            logger.info("BT scan cache updated: %d device(s)", len(_scan_cache))
+        except Exception:
+            logger.exception("Error in periodic BT scan")
+        await asyncio.sleep(interval)
+
+
+def get_nearby_devices() -> list[dict]:
+    """Return the cached list of nearby devices (populated by periodic_scan_loop)."""
+    return list(_scan_cache)
 
 
 def _run(args: list[str], timeout: int = 10) -> str:

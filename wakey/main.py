@@ -42,6 +42,9 @@ async def lifespan(app: FastAPI):
     if cfg.bluetooth_devices:
         asyncio.create_task(bluetooth.reconnect_saved_devices(cfg.bluetooth_devices))
 
+    # Periodic BT scan so nearby devices appear automatically
+    asyncio.create_task(bluetooth.periodic_scan_loop(interval=30))
+
     yield
     scheduler.shutdown()
 

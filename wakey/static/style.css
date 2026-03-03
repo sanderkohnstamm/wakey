@@ -366,6 +366,7 @@ body {
 }
 .g-bt-dot.connected { background: var(--success); }
 .g-bt-dot.saved { background: var(--text-secondary); }
+.g-bt-dot.nearby { background: var(--border); }
 .g-bt-speaker-name {
   font-size: 0.8rem;
   color: var(--text);
