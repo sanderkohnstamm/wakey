@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#111113">
   <title>Wakey</title>
-  <link rel="stylesheet" href="/static/style.css?v=5">
+  <link rel="stylesheet" href="/static/style.css?v=6">
 </head>
 <body>
   <div id="connection-banner" class="connection-banner hidden">Not connected to Wakey</div>
@@ -25,11 +25,41 @@
       </div>
     </div>
 
-    <div class="home-alarms-header">
-      <span class="home-alarms-title section-header">Alarms</span>
-      <button class="btn btn-add" id="btn-add-alarm">+</button>
+    <!-- Inline alarm widget -->
+    <div class="alarm-widget">
+      <div class="alarm-widget-row">
+        <input type="time" id="aw-time" value="07:00" class="aw-time-input">
+        <label class="toggle" id="aw-toggle-wrap">
+          <input type="checkbox" id="aw-enabled" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="day-pills" id="aw-days">
+        <button type="button" class="pill" data-day="0">Mon</button>
+        <button type="button" class="pill" data-day="1">Tue</button>
+        <button type="button" class="pill" data-day="2">Wed</button>
+        <button type="button" class="pill" data-day="3">Thu</button>
+        <button type="button" class="pill" data-day="4">Fri</button>
+        <button type="button" class="pill" data-day="5">Sat</button>
+        <button type="button" class="pill" data-day="6">Sun</button>
+      </div>
+      <div class="foldout aw-advanced">
+        <button class="foldout-header" id="foldout-advanced-toggle">
+          <span class="section-header">Advanced</span>
+          <span class="foldout-arrow">&#9654;</span>
+        </button>
+        <div class="foldout-body" id="foldout-advanced" style="display:none">
+          <div class="form-row">
+            <label for="aw-snooze">Snooze <span id="aw-snooze-val">9</span> min</label>
+            <input type="range" id="aw-snooze" min="1" max="30" value="9" style="flex:1">
+          </div>
+          <div class="form-row">
+            <label for="aw-autostop">Auto-stop <span id="aw-autostop-val">30</span> min</label>
+            <input type="range" id="aw-autostop" min="5" max="60" value="30" style="flex:1">
+          </div>
+        </div>
+      </div>
     </div>
-    <div id="home-alarms" class="home-alarms"></div>
 
     <!-- Music foldout -->
     <div class="foldout">
@@ -129,53 +159,6 @@
     </div>
   </div>
 
-  <!-- Edit Alarm View -->
-  <div id="view-edit" class="view">
-    <div class="view-header">
-      <button class="btn btn-back" id="btn-back-main">&larr;</button>
-      <h2 id="edit-title">Edit Alarm</h2>
-      <button class="btn btn-delete" id="btn-delete-alarm">Delete</button>
-    </div>
-    <form id="alarm-form" class="alarm-form">
-      <div class="form-group">
-        <label for="f-time">Time</label>
-        <input type="time" id="f-time" required>
-      </div>
-
-      <div class="form-group">
-        <label for="f-label">Label</label>
-        <input type="text" id="f-label" placeholder="Optional label">
-      </div>
-
-      <div class="form-group">
-        <label>Days</label>
-        <div class="day-pills" id="f-days">
-          <button type="button" class="pill" data-day="0">Mon</button>
-          <button type="button" class="pill" data-day="1">Tue</button>
-          <button type="button" class="pill" data-day="2">Wed</button>
-          <button type="button" class="pill" data-day="3">Thu</button>
-          <button type="button" class="pill" data-day="4">Fri</button>
-          <button type="button" class="pill" data-day="5">Sat</button>
-          <button type="button" class="pill" data-day="6">Sun</button>
-        </div>
-      </div>
-
-      <fieldset class="form-group">
-        <legend>Advanced</legend>
-        <div class="form-row">
-          <label for="f-snooze">Snooze <span id="f-snooze-val">9</span> min</label>
-          <input type="range" id="f-snooze" min="1" max="30" value="9" style="flex:1">
-        </div>
-        <div class="form-row">
-          <label for="f-autostop">Auto-stop <span id="f-autostop-val">30</span> min</label>
-          <input type="range" id="f-autostop" min="5" max="60" value="30" style="flex:1">
-        </div>
-      </fieldset>
-
-      <button type="submit" class="btn btn-save">Save</button>
-    </form>
-  </div>
-
   <!-- Settings View -->
   <div id="view-settings" class="view">
     <div class="view-header">
@@ -220,6 +203,6 @@
 
   </div>
 
-  <script src="/static/app.js?v=5"></script>
+  <script src="/static/app.js?v=6"></script>
 </body>
 </html>

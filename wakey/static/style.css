@@ -235,18 +235,40 @@ body {
   font-weight: 600;
 }
 
-/* ── Home alarms header ── */
+/* ── Inline alarm widget ── */
 
-.home-alarms-header {
+.alarm-widget {
+  max-width: 360px;
+  margin: 24px auto 0;
+}
+.alarm-widget-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  max-width: 360px;
-  margin: 28px auto 0;
-  padding: 0 2px;
+  gap: 14px;
+  margin-bottom: 12px;
 }
-.home-alarms-title {
-  font-size: 0.8rem;
+.aw-time-input {
+  flex: 1;
+  font-size: 2.2rem;
+  font-weight: 300;
+  text-align: center;
+  padding: 10px 14px;
+  background: var(--bg-raised);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  -webkit-appearance: none;
+}
+.aw-time-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.alarm-widget .day-pills {
+  justify-content: center;
+  margin-bottom: 10px;
+}
+.alarm-widget .foldout {
+  margin-top: 8px;
 }
 
 /* ── Foldout sections ── */
@@ -349,87 +371,6 @@ body {
   margin-right: auto;
 }
 
-/* ── Home alarm list ── */
-
-.home-alarms {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-width: 360px;
-  margin-left: auto;
-  margin-right: auto;
-}
-.home-alarm {
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.home-alarm:active {
-  background: var(--bg-input);
-  transform: scale(0.99);
-}
-.home-alarm.disabled .ha-time,
-.home-alarm.disabled .ha-info {
-  opacity: 0.35;
-}
-.home-alarm .ha-time {
-  font-size: 1.2rem;
-  font-weight: 300;
-  font-variant-numeric: tabular-nums;
-  min-width: 55px;
-}
-.home-alarm .ha-info {
-  flex: 1;
-  font-size: 0.72rem;
-  color: var(--text-secondary);
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.home-alarm .toggle {
-  width: 40px;
-  height: 24px;
-}
-.home-alarm .toggle .slider::before {
-  width: 18px;
-  height: 18px;
-}
-.home-alarm .toggle input:checked + .slider::before {
-  -webkit-transform: translateX(16px);
-  transform: translateX(16px);
-}
-
-.ha-source {
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
-.ha-source.radio {
-  color: var(--primary);
-  background: var(--primary-dim);
-}
-.ha-source.spotify {
-  color: var(--spotify);
-  background: var(--spotify-dim);
-}
-
-.home-alarms-empty {
-  text-align: center;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  padding: 20px 0;
-}
 
 /* ── Toggle switch ── */
 

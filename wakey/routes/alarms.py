@@ -1,8 +1,8 @@
-"""CRUD routes for alarms."""
+"""Single-alarm routes."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from ..config import load_alarms, save_alarms
 from ..models import Alarm, AlarmUpdate, RADIO_STATIONS
@@ -11,59 +11,29 @@ from ..scheduler import sync_alarms
 router = APIRouter(prefix="/api")
 
 
-@router.get("/alarms")
-async def list_alarms() -> list[dict]:
-    return [a.model_dump() for a in load_alarms()]
-
-
-@router.post("/alarms", status_code=201)
-async def create_alarm(body: dict) -> dict:
-    # Accept only alarm-level fields, ignore any leftover audio/hue
-    alarm = Alarm(
-        time=body.get("time", "07:00"),
-        days=body.get("days", [0, 1, 2, 3, 4]),
-        enabled=body.get("enabled", True),
-        label=body.get("label", ""),
-        snooze_minutes=body.get("snooze_minutes", 9),
-        auto_stop_minutes=body.get("auto_stop_minutes", 30),
-    )
+@router.get("/alarm")
+async def get_alarm() -> dict:
     alarms = load_alarms()
-    alarms.append(alarm)
+    if not alarms:
+        alarm = Alarm()
+        alarms = [alarm]
+        save_alarms(alarms)
+        sync_alarms(alarms)
+    return alarms[0].model_dump()
+
+
+@router.put("/alarm")
+async def update_alarm(update: AlarmUpdate) -> dict:
+    alarms = load_alarms()
+    if not alarms:
+        alarms = [Alarm()]
+    data = alarms[0].model_dump()
+    updates = update.model_dump(exclude_none=True)
+    data.update(updates)
+    alarms[0] = Alarm.model_validate(data)
     save_alarms(alarms)
     sync_alarms(alarms)
-    return alarm.model_dump()
-
-
-@router.get("/alarms/{alarm_id}")
-async def get_alarm(alarm_id: str) -> dict:
-    for a in load_alarms():
-        if a.id == alarm_id:
-            return a.model_dump()
-    raise HTTPException(404, "Alarm not found")
-
-
-@router.put("/alarms/{alarm_id}")
-async def update_alarm(alarm_id: str, update: AlarmUpdate) -> dict:
-    alarms = load_alarms()
-    for i, a in enumerate(alarms):
-        if a.id == alarm_id:
-            data = a.model_dump()
-            updates = update.model_dump(exclude_none=True)
-            data.update(updates)
-            alarms[i] = Alarm.model_validate(data)
-            save_alarms(alarms)
-            sync_alarms(alarms)
-            return alarms[i].model_dump()
-    raise HTTPException(404, "Alarm not found")
-
-
-@router.delete("/alarms/{alarm_id}")
-async def delete_alarm(alarm_id: str) -> dict:
-    alarms = load_alarms()
-    alarms = [a for a in alarms if a.id != alarm_id]
-    save_alarms(alarms)
-    sync_alarms(alarms)
-    return {"ok": True}
+    return alarms[0].model_dump()
 
 
 @router.get("/stations")

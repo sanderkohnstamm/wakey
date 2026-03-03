@@ -3,8 +3,6 @@
 (function () {
   "use strict";
 
-  var DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  var currentAlarmId = null;
   var stationsCache = null;
   var radioPlaying = false;
 
@@ -25,18 +23,6 @@
     var opts = { method: method, headers: { "Content-Type": "application/json" } };
     if (body !== undefined) { opts.body = JSON.stringify(body); }
     return fetch(url, opts).then(function (r) { return r.json(); });
-  }
-
-  function daysText(days) {
-    if (days.length === 7) return "Every day";
-    if (days.length === 5 && days.indexOf(0) !== -1 && days.indexOf(1) !== -1 &&
-        days.indexOf(2) !== -1 && days.indexOf(3) !== -1 && days.indexOf(4) !== -1) {
-      return "Weekdays";
-    }
-    if (days.length === 2 && days.indexOf(5) !== -1 && days.indexOf(6) !== -1) {
-      return "Weekends";
-    }
-    return days.map(function (d) { return DAY_NAMES[d]; }).join(", ");
   }
 
   // ── Clock ──
@@ -108,55 +94,68 @@
   setInterval(pollStatus, 2000);
   pollStatus();
 
-  // ── Home alarm list ──
+  // ── Inline alarm widget ──
 
-  function loadHomeAlarms() {
-    fetch("/api/alarms")
+  function loadAlarm() {
+    fetch("/api/alarm")
       .then(function (r) { return r.json(); })
-      .then(function (alarms) { renderHomeAlarms(alarms); });
+      .then(function (a) {
+        $("#aw-time").value = a.time;
+        $("#aw-enabled").checked = a.enabled;
+
+        var pills = $$("#aw-days .pill");
+        for (var i = 0; i < pills.length; i++) {
+          var day = parseInt(pills[i].getAttribute("data-day"));
+          pills[i].classList.toggle("active", a.days.indexOf(day) !== -1);
+        }
+
+        $("#aw-snooze").value = a.snooze_minutes;
+        $("#aw-snooze-val").textContent = a.snooze_minutes;
+        $("#aw-autostop").value = a.auto_stop_minutes;
+        $("#aw-autostop-val").textContent = a.auto_stop_minutes;
+      });
   }
 
-  function renderHomeAlarms(alarms) {
-    var el = $("#home-alarms");
-    alarms.sort(function (a, b) { return a.time < b.time ? -1 : a.time > b.time ? 1 : 0; });
-    if (alarms.length === 0) {
-      el.innerHTML = '<div class="home-alarms-empty">No alarms yet</div>';
-      return;
-    }
-    var html = "";
-    for (var i = 0; i < alarms.length; i++) {
-      var a = alarms[i];
-      var label = a.label ? a.label + " \u00b7 " : "";
-      html += '<div class="home-alarm ' + (a.enabled ? "" : "disabled") + '" data-id="' + a.id + '">' +
-        '<div class="ha-time">' + a.time + '</div>' +
-        '<div class="ha-info">' + label + daysText(a.days) + '</div>' +
-        '<label class="toggle" onclick="event.stopPropagation()">' +
-          '<input type="checkbox" ' + (a.enabled ? "checked" : "") + ' data-alarm-id="' + a.id + '">' +
-          '<span class="slider"></span>' +
-        '</label>' +
-      '</div>';
-    }
-    el.innerHTML = html;
-
-    var toggles = el.querySelectorAll(".toggle input");
-    for (var j = 0; j < toggles.length; j++) {
-      toggles[j].addEventListener("change", function () {
-        var id = this.getAttribute("data-alarm-id");
-        json("PUT", "/api/alarms/" + id, { enabled: this.checked }).then(function () {
-          loadHomeAlarms();
-        });
-      });
+  function saveAlarm() {
+    var days = [];
+    var activePills = $$("#aw-days .pill.active");
+    for (var i = 0; i < activePills.length; i++) {
+      days.push(parseInt(activePills[i].getAttribute("data-day")));
     }
 
-    var cards = el.querySelectorAll(".home-alarm");
-    for (var k = 0; k < cards.length; k++) {
-      cards[k].addEventListener("click", function () {
-        openEditView(this.getAttribute("data-id"));
-      });
-    }
+    var body = {
+      time: $("#aw-time").value,
+      enabled: $("#aw-enabled").checked,
+      days: days,
+      snooze_minutes: parseInt($("#aw-snooze").value),
+      auto_stop_minutes: parseInt($("#aw-autostop").value)
+    };
+
+    json("PUT", "/api/alarm", body);
   }
 
-  loadHomeAlarms();
+  loadAlarm();
+
+  // Time input
+  $("#aw-time").addEventListener("change", function () { saveAlarm(); });
+
+  // Enable toggle
+  $("#aw-enabled").addEventListener("change", function () { saveAlarm(); });
+
+  // Day pills
+  var awPills = $$("#aw-days .pill");
+  for (var pi = 0; pi < awPills.length; pi++) {
+    awPills[pi].addEventListener("click", function () {
+      this.classList.toggle("active");
+      saveAlarm();
+    });
+  }
+
+  // Snooze / auto-stop sliders
+  $("#aw-snooze").addEventListener("input", function () { $("#aw-snooze-val").textContent = this.value; });
+  $("#aw-snooze").addEventListener("change", function () { saveAlarm(); });
+  $("#aw-autostop").addEventListener("input", function () { $("#aw-autostop-val").textContent = this.value; });
+  $("#aw-autostop").addEventListener("change", function () { saveAlarm(); });
 
   // ── Dismiss / Snooze ──
 
@@ -175,74 +174,7 @@
     showView("settings");
   });
 
-  $("#btn-back-main").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
-  $("#btn-back-main-settings").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
-
-  // ── Add alarm ──
-
-  $("#btn-add-alarm").addEventListener("click", function () {
-    currentAlarmId = null;
-    $("#edit-title").textContent = "New Alarm";
-    $("#btn-delete-alarm").style.display = "none";
-    resetForm();
-    showView("edit");
-  });
-
-  // ── Edit alarm ──
-
-  function openEditView(id) {
-    currentAlarmId = id;
-    $("#edit-title").textContent = "Edit Alarm";
-    $("#btn-delete-alarm").style.display = "";
-
-    fetch("/api/alarms/" + id)
-      .then(function (r) { return r.json(); })
-      .then(function (a) {
-        $("#f-time").value = a.time;
-        $("#f-label").value = a.label;
-
-        var pills = $$(".pill");
-        for (var i = 0; i < pills.length; i++) {
-          var day = parseInt(pills[i].getAttribute("data-day"));
-          pills[i].classList.toggle("active", a.days.indexOf(day) !== -1);
-        }
-
-        $("#f-snooze").value = a.snooze_minutes;
-        $("#f-snooze-val").textContent = a.snooze_minutes;
-        $("#f-autostop").value = a.auto_stop_minutes;
-        $("#f-autostop-val").textContent = a.auto_stop_minutes;
-
-        showView("edit");
-      });
-  }
-
-  function resetForm() {
-    $("#f-time").value = "07:00";
-    $("#f-label").value = "";
-    var pills = $$(".pill");
-    for (var i = 0; i < pills.length; i++) {
-      var day = parseInt(pills[i].getAttribute("data-day"));
-      pills[i].classList.toggle("active", day < 5);
-    }
-    $("#f-snooze").value = 9;
-    $("#f-snooze-val").textContent = "9";
-    $("#f-autostop").value = 30;
-    $("#f-autostop-val").textContent = "30";
-  }
-
-  // ── Day pills ──
-
-  var pills = $$(".pill");
-  for (var pi = 0; pi < pills.length; pi++) {
-    pills[pi].addEventListener("click", function () {
-      this.classList.toggle("active");
-    });
-  }
-
-  // ── Range sliders ──
-
-  $("#f-snooze").addEventListener("input", function () { $("#f-snooze-val").textContent = this.value; });
-  $("#f-autostop").addEventListener("input", function () { $("#f-autostop-val").textContent = this.value; });
+  $("#btn-back-main-settings").addEventListener("click", function () { showView("main"); });
 
   // ── Stations loader (reusable) ──
 
@@ -259,45 +191,6 @@
         selectEl.innerHTML = html;
       });
   }
-
-  // ── Save alarm ──
-
-  $("#alarm-form").addEventListener("submit", function (e) {
-    e.preventDefault();
-
-    var days = [];
-    var activePills = $$(".pill.active");
-    for (var i = 0; i < activePills.length; i++) {
-      days.push(parseInt(activePills[i].getAttribute("data-day")));
-    }
-
-    var body = {
-      time: $("#f-time").value,
-      label: $("#f-label").value,
-      days: days,
-      snooze_minutes: parseInt($("#f-snooze").value),
-      auto_stop_minutes: parseInt($("#f-autostop").value)
-    };
-
-    var method = currentAlarmId ? "PUT" : "POST";
-    var url = currentAlarmId ? "/api/alarms/" + currentAlarmId : "/api/alarms";
-
-    json(method, url, body).then(function () {
-      loadHomeAlarms();
-      showView("main");
-    });
-  });
-
-  // ── Delete alarm ──
-
-  $("#btn-delete-alarm").addEventListener("click", function () {
-    if (!currentAlarmId) return;
-    if (!confirm("Delete this alarm?")) return;
-    fetch("/api/alarms/" + currentAlarmId, { method: "DELETE" }).then(function () {
-      loadHomeAlarms();
-      showView("main");
-    });
-  });
 
   // ═══════════════════════════════════════
   // ── Foldout sections ──
@@ -321,6 +214,7 @@
 
   setupFoldout("foldout-music-toggle", "foldout-music");
   setupFoldout("foldout-lights-toggle", "foldout-lights");
+  setupFoldout("foldout-advanced-toggle", "foldout-advanced");
 
   // ═══════════════════════════════════════
   // ── Music foldout (global config) ──
