@@ -505,14 +505,48 @@
     for (var m = 0; m < items.length; m++) {
       var item = items[m];
       var dotClass = item.connected ? "connected" : "saved";
-      var label = item.connected ? "Connected" : "Saved";
-      html += '<div class="g-bt-speaker-row">' +
-        '<div class="g-bt-dot ' + dotClass + '"></div>' +
-        '<span class="g-bt-speaker-name">' + item.name + '</span>' +
-        '<span class="g-bt-speaker-label">' + label + '</span>' +
-      '</div>';
+      if (item.connected) {
+        html += '<div class="g-bt-speaker-row">' +
+          '<div class="g-bt-dot ' + dotClass + '"></div>' +
+          '<span class="g-bt-speaker-name">' + item.name + '</span>' +
+          '<button class="btn btn-small g-bt-action" data-mac="' + item.mac + '" data-action="disconnect">Disconnect</button>' +
+        '</div>';
+      } else {
+        html += '<div class="g-bt-speaker-row">' +
+          '<div class="g-bt-dot ' + dotClass + '"></div>' +
+          '<span class="g-bt-speaker-name">' + item.name + '</span>' +
+          '<button class="btn btn-small g-bt-action" data-mac="' + item.mac + '" data-action="connect">Connect</button>' +
+        '</div>';
+      }
     }
+    html += '<div id="g-bt-status" class="status-msg"></div>';
     el.innerHTML = html;
+
+    // Attach button handlers
+    var btns = el.querySelectorAll(".g-bt-action");
+    for (var n = 0; n < btns.length; n++) {
+      btns[n].addEventListener("click", function () {
+        var mac = this.getAttribute("data-mac");
+        var action = this.getAttribute("data-action");
+        var btn = this;
+        var statusEl = $("#g-bt-status");
+        btn.disabled = true;
+        btn.textContent = action === "connect" ? "Connecting..." : "...";
+        statusEl.textContent = action === "connect" ? "Connecting..." : "Disconnecting...";
+        statusEl.className = "status-msg";
+
+        json("POST", "/api/bluetooth/" + action, { mac: mac }).then(function (data) {
+          if (data.ok) {
+            statusEl.textContent = action === "connect" ? "Connected!" : "Disconnected";
+            statusEl.className = "status-msg ok";
+          } else {
+            statusEl.textContent = data.error || "Failed";
+            statusEl.className = "status-msg err";
+          }
+          loadMusicBtSpeakers();
+        });
+      });
+    }
   }
 
   // Load on page load

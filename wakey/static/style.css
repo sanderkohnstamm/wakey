@@ -332,6 +332,11 @@ body {
   color: var(--text-secondary);
   flex-shrink: 0;
 }
+.g-bt-action {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  padding: 4px 10px;
+}
 
 /* ── Nav bar ── */
 
