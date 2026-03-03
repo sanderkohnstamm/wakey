@@ -101,7 +101,7 @@
         $("#aw-time").value = a.time;
         $("#aw-enabled").checked = a.enabled;
 
-        var pills = $$("#aw-days .pill");
+        var pills = $$("#aw-days .aw-day");
         for (var i = 0; i < pills.length; i++) {
           var day = parseInt(pills[i].getAttribute("data-day"));
           pills[i].classList.toggle("active", a.days.indexOf(day) !== -1);
@@ -116,7 +116,7 @@
 
   function saveAlarm() {
     var days = [];
-    var activePills = $$("#aw-days .pill.active");
+    var activePills = $$("#aw-days .aw-day.active");
     for (var i = 0; i < activePills.length; i++) {
       days.push(parseInt(activePills[i].getAttribute("data-day")));
     }
@@ -129,7 +129,9 @@
       auto_stop_minutes: parseInt($("#aw-autostop").value)
     };
 
-    json("PUT", "/api/alarm", body);
+    json("PUT", "/api/alarm", body).then(function () {
+      pollStatus();
+    });
   }
 
   loadAlarm();
@@ -141,7 +143,7 @@
   $("#aw-enabled").addEventListener("change", function () { saveAlarm(); });
 
   // Day pills
-  var awPills = $$("#aw-days .pill");
+  var awPills = $$("#aw-days .aw-day");
   for (var pi = 0; pi < awPills.length; pi++) {
     awPills[pi].addEventListener("click", function () {
       this.classList.toggle("active");

@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#111113">
   <title>Wakey</title>
-  <link rel="stylesheet" href="/static/style.css?v=7">
+  <link rel="stylesheet" href="/static/style.css?v=8">
 </head>
 <body>
   <div id="connection-banner" class="connection-banner hidden">Not connected to Wakey</div>
@@ -27,21 +27,21 @@
 
     <!-- Inline alarm widget -->
     <div class="alarm-widget">
-      <div class="alarm-widget-row">
+      <div class="aw-time-row">
         <input type="time" id="aw-time" value="07:00" class="aw-time-input">
-        <label class="toggle" id="aw-toggle-wrap">
+        <label class="toggle">
           <input type="checkbox" id="aw-enabled" checked>
           <span class="slider"></span>
         </label>
       </div>
-      <div class="day-pills" id="aw-days">
-        <button type="button" class="pill" data-day="0">Mon</button>
-        <button type="button" class="pill" data-day="1">Tue</button>
-        <button type="button" class="pill" data-day="2">Wed</button>
-        <button type="button" class="pill" data-day="3">Thu</button>
-        <button type="button" class="pill" data-day="4">Fri</button>
-        <button type="button" class="pill" data-day="5">Sat</button>
-        <button type="button" class="pill" data-day="6">Sun</button>
+      <div class="aw-days" id="aw-days">
+        <button type="button" class="aw-day" data-day="0">M</button>
+        <button type="button" class="aw-day" data-day="1">T</button>
+        <button type="button" class="aw-day" data-day="2">W</button>
+        <button type="button" class="aw-day" data-day="3">T</button>
+        <button type="button" class="aw-day" data-day="4">F</button>
+        <button type="button" class="aw-day" data-day="5">S</button>
+        <button type="button" class="aw-day" data-day="6">S</button>
       </div>
       <div class="foldout aw-advanced">
         <button class="foldout-header" id="foldout-advanced-toggle">
@@ -203,6 +203,6 @@
 
   </div>
 
-  <script src="/static/app.js?v=7"></script>
+  <script src="/static/app.js?v=8"></script>
 </body>
 </html>
