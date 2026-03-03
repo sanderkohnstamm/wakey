@@ -269,31 +269,28 @@ body {
 }
 .aw-days {
   display: flex;
-  justify-content: center;
-  gap: 6px;
+  gap: 5px;
   margin-bottom: 10px;
 }
 .aw-day {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  flex: 1;
   border: 1px solid var(--border);
   background: none;
   color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 8px 0;
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   -webkit-appearance: none;
   transition: all 0.15s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
+  text-align: center;
 }
 .aw-day.active {
-  background: var(--primary);
+  background: var(--primary-dim);
   border-color: var(--primary);
-  color: #fff;
+  color: var(--primary);
+  font-weight: 600;
 }
 .alarm-widget .foldout {
   margin-top: 8px;
