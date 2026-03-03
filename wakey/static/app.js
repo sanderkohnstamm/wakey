@@ -459,8 +459,65 @@
     statusEl.className = "status-msg";
   });
 
+  // ── BT speakers in music foldout ──
+
+  function loadMusicBtSpeakers() {
+    var el = $("#g-bt-speakers");
+    fetch("/api/bluetooth/status")
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var connected = data.devices || [];
+        // Also load saved MACs from config to show previously known devices
+        return fetch("/api/config").then(function (r) { return r.json(); }).then(function (cfg) {
+          var savedMacs = cfg.bluetooth_devices || [];
+          renderMusicBtSpeakers(el, connected, savedMacs);
+        });
+      })
+      .catch(function () {
+        el.innerHTML = "";
+      });
+  }
+
+  function renderMusicBtSpeakers(el, connected, savedMacs) {
+    var connectedMacs = {};
+    for (var i = 0; i < connected.length; i++) {
+      connectedMacs[connected[i].mac] = connected[i].name;
+    }
+
+    // Build list: connected first, then saved-but-not-connected
+    var items = [];
+    for (var j = 0; j < connected.length; j++) {
+      items.push({ name: connected[j].name, mac: connected[j].mac, connected: true });
+    }
+    for (var k = 0; k < savedMacs.length; k++) {
+      if (!connectedMacs[savedMacs[k]]) {
+        items.push({ name: savedMacs[k], mac: savedMacs[k], connected: false });
+      }
+    }
+
+    if (items.length === 0) {
+      el.innerHTML = '<div class="section-header" style="margin-bottom:4px">Speakers</div>' +
+        '<span class="hint">No speakers known. Connect via Settings.</span>';
+      return;
+    }
+
+    var html = '<div class="section-header" style="margin-bottom:6px">Speakers</div>';
+    for (var m = 0; m < items.length; m++) {
+      var item = items[m];
+      var dotClass = item.connected ? "connected" : "saved";
+      var label = item.connected ? "Connected" : "Saved";
+      html += '<div class="g-bt-speaker-row">' +
+        '<div class="g-bt-dot ' + dotClass + '"></div>' +
+        '<span class="g-bt-speaker-name">' + item.name + '</span>' +
+        '<span class="g-bt-speaker-label">' + label + '</span>' +
+      '</div>';
+    }
+    el.innerHTML = html;
+  }
+
   // Load on page load
   loadGlobalAudioConfig();
+  loadMusicBtSpeakers();
 
   // ═══════════════════════════════════════
   // ── Lights foldout (global config) ──
@@ -588,6 +645,37 @@
 
   $("#btn-g-refresh-rooms").addEventListener("click", function () {
     loadGlobalHueRooms([]);
+  });
+
+  // Set scene on all configured rooms
+  $("#btn-set-scene").addEventListener("click", function () {
+    var statusEl = $("#g-lights-status");
+    var sceneId = $("#g-hue-scene").value;
+    if (!sceneId) {
+      statusEl.textContent = "Select a scene first";
+      statusEl.className = "status-msg err";
+      return;
+    }
+    var rooms = getGlobalSelectedRooms();
+    if (rooms.length === 0) {
+      statusEl.textContent = "Select at least one room";
+      statusEl.className = "status-msg err";
+      return;
+    }
+    statusEl.textContent = "Setting scene...";
+    statusEl.className = "status-msg";
+    var pending = rooms.length;
+    var anyOk = false;
+    for (var i = 0; i < rooms.length; i++) {
+      json("POST", "/api/hue/rooms/" + rooms[i].id + "/scene", { scene_id: sceneId }).then(function (data) {
+        if (data.ok) anyOk = true;
+        pending--;
+        if (pending === 0) {
+          statusEl.textContent = anyOk ? "Scene activated" : "Failed to set scene";
+          statusEl.className = anyOk ? "status-msg ok" : "status-msg err";
+        }
+      });
+    }
   });
 
   // Test lights
