@@ -15,8 +15,10 @@ router = APIRouter(prefix="/api")
 async def get_alarm() -> dict:
     alarms = load_alarms()
     if not alarms:
-        alarm = Alarm()
-        alarms = [alarm]
+        alarms = [Alarm()]
+    # Keep only the first alarm
+    if len(alarms) > 1:
+        alarms = [alarms[0]]
         save_alarms(alarms)
         sync_alarms(alarms)
     return alarms[0].model_dump()
@@ -30,10 +32,11 @@ async def update_alarm(update: AlarmUpdate) -> dict:
     data = alarms[0].model_dump()
     updates = update.model_dump(exclude_none=True)
     data.update(updates)
-    alarms[0] = Alarm.model_validate(data)
-    save_alarms(alarms)
-    sync_alarms(alarms)
-    return alarms[0].model_dump()
+    alarm = Alarm.model_validate(data)
+    # Always store exactly one alarm
+    save_alarms([alarm])
+    sync_alarms([alarm])
+    return alarm.model_dump()
 
 
 @router.get("/stations")
