@@ -70,9 +70,7 @@
         if (diff > 0) {
           var hours = Math.floor(diff / 3600000);
           var mins = Math.floor((diff % 3600000) / 60000);
-          var hh = String(next.getHours()).padStart(2, "0");
-          var mm = String(next.getMinutes()).padStart(2, "0");
-          nextAlarm.textContent = hh + ":" + mm + " \u00b7 in " + hours + "h " + mins + "m";
+          nextAlarm.textContent = "Alarm in " + hours + "h " + mins + "m";
         } else {
           nextAlarm.textContent = "";
         }
