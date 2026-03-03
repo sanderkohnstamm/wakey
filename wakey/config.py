@@ -7,7 +7,7 @@ import logging
 import os
 from pathlib import Path
 
-from .models import Alarm, AppConfig
+from .models import Alarm, AppConfig, AudioConfig, HueConfig
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,26 @@ def save_alarms(alarms: list[Alarm]) -> None:
 def load_config() -> AppConfig:
     data = _load_raw()
     raw_config = data.get("config", {})
-    return AppConfig.model_validate(raw_config)
+    cfg = AppConfig.model_validate(raw_config)
+
+    # One-time migration: if global audio/hue_alarm are defaults but an
+    # existing alarm has settings, migrate from the first alarm.
+    if not raw_config.get("audio") and not raw_config.get("hue_alarm"):
+        raw_alarms = data.get("alarms", [])
+        if raw_alarms:
+            first = raw_alarms[0]
+            migrated = False
+            if first.get("audio"):
+                cfg.audio = AudioConfig.model_validate(first["audio"])
+                migrated = True
+            if first.get("hue"):
+                cfg.hue_alarm = HueConfig.model_validate(first["hue"])
+                migrated = True
+            if migrated:
+                logger.info("Migrated audio/hue settings from first alarm to global config")
+                save_config(cfg)
+
+    return cfg
 
 
 def save_config(config: AppConfig) -> None:

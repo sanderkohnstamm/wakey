@@ -249,6 +249,52 @@ body {
   font-size: 0.8rem;
 }
 
+/* ── Foldout sections ── */
+
+.foldout {
+  max-width: 360px;
+  margin: 12px auto 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.foldout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: var(--bg-raised);
+  border: none;
+  color: var(--text);
+  padding: 12px 14px;
+  cursor: pointer;
+  -webkit-appearance: none;
+}
+.foldout-header:active {
+  background: var(--bg-input);
+}
+.foldout-arrow {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  transition: transform 0.2s;
+}
+.foldout.open .foldout-arrow {
+  transform: rotate(90deg);
+}
+.foldout-body {
+  padding: 12px 14px 16px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+}
+.foldout-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.foldout-actions .btn {
+  flex: 1;
+}
+
 /* ── Nav bar ── */
 
 .nav-bar {

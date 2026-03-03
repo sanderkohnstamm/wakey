@@ -9,6 +9,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from . import alarm as alarm_manager
+from .config import load_config
 from .models import Alarm
 
 logger = logging.getLogger(__name__)
@@ -48,9 +49,13 @@ def sync_alarms(alarms: list[Alarm]) -> None:
 
 
 def _add_alarm_job(a: Alarm) -> None:
-    """Add a cron job for one alarm. Fires at time - hue offset."""
+    """Add a cron job for one alarm. Fires at time - global hue offset."""
     hour, minute = map(int, a.time.split(":"))
-    offset = a.hue.offset_minutes if a.hue.enabled else 0
+
+    # Read offset from global config
+    cfg = load_config()
+    hue_cfg = cfg.hue_alarm
+    offset = hue_cfg.offset_minutes if hue_cfg.enabled else 0
 
     # Subtract offset to get trigger time
     trigger_dt = datetime.now().replace(hour=hour, minute=minute, second=0)

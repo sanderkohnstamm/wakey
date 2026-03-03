@@ -49,8 +49,6 @@ class Alarm(BaseModel):
     days: list[int] = Field(default_factory=lambda: [0, 1, 2, 3, 4])  # 0=Mon..6=Sun
     enabled: bool = True
     label: str = ""
-    hue: HueConfig = Field(default_factory=HueConfig)
-    audio: AudioConfig = Field(default_factory=AudioConfig)
     snooze_minutes: int = 9
     auto_stop_minutes: int = 30
 
@@ -60,8 +58,6 @@ class AlarmUpdate(BaseModel):
     days: Optional[list[int]] = None
     enabled: Optional[bool] = None
     label: Optional[str] = None
-    hue: Optional[HueConfig] = None
-    audio: Optional[AudioConfig] = None
     snooze_minutes: Optional[int] = None
     auto_stop_minutes: Optional[int] = None
 
@@ -69,6 +65,9 @@ class AlarmUpdate(BaseModel):
 class AppConfig(BaseModel):
     """Global app configuration persisted alongside alarms."""
     hue: GlobalHueConfig = Field(default_factory=GlobalHueConfig)
+    audio: AudioConfig = Field(default_factory=AudioConfig)
+    hue_alarm: HueConfig = Field(default_factory=HueConfig)
+    bluetooth_devices: list[str] = Field(default_factory=list)
 
 
 class AppState(BaseModel):

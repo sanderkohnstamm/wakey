@@ -17,9 +17,17 @@ async def list_alarms() -> list[dict]:
 
 
 @router.post("/alarms", status_code=201)
-async def create_alarm(alarm: Alarm) -> dict:
+async def create_alarm(body: dict) -> dict:
+    # Accept only alarm-level fields, ignore any leftover audio/hue
+    alarm = Alarm(
+        time=body.get("time", "07:00"),
+        days=body.get("days", [0, 1, 2, 3, 4]),
+        enabled=body.get("enabled", True),
+        label=body.get("label", ""),
+        snooze_minutes=body.get("snooze_minutes", 9),
+        auto_stop_minutes=body.get("auto_stop_minutes", 30),
+    )
     alarms = load_alarms()
-    alarm.id = Alarm().id
     alarms.append(alarm)
     save_alarms(alarms)
     sync_alarms(alarms)

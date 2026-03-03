@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -12,8 +13,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 
-from . import scheduler
-from .config import load_alarms
+from . import bluetooth, scheduler
+from .config import load_alarms, load_config
 from .routes import alarms as alarms_router
 from .routes import bluetooth as bluetooth_router
 from .routes import config as config_router
@@ -26,6 +27,8 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 
+logger = logging.getLogger(__name__)
+
 BASE_DIR = Path(__file__).parent
 
 
@@ -33,6 +36,12 @@ BASE_DIR = Path(__file__).parent
 async def lifespan(app: FastAPI):
     scheduler.start()
     scheduler.sync_alarms(load_alarms())
+
+    # Auto-reconnect saved Bluetooth devices in background
+    cfg = load_config()
+    if cfg.bluetooth_devices:
+        asyncio.create_task(bluetooth.reconnect_saved_devices(cfg.bluetooth_devices))
+
     yield
     scheduler.shutdown()
 

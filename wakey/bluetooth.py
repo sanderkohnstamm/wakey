@@ -264,6 +264,22 @@ def set_sink_volume(mac: str, volume: int) -> bool:
     return True
 
 
+async def reconnect_saved_devices(macs: list[str]) -> None:
+    """Try to reconnect a list of previously-connected BT devices."""
+    if not macs:
+        return
+    logger.info("Auto-reconnecting %d saved BT device(s): %s", len(macs), macs)
+    for mac in macs:
+        try:
+            result = await connect_device(mac)
+            if result.get("ok"):
+                logger.info("Reconnected BT device %s", mac)
+            else:
+                logger.warning("Failed to reconnect %s: %s", mac, result.get("error", ""))
+        except Exception:
+            logger.exception("Error reconnecting BT device %s", mac)
+
+
 def _extract_error(output: str) -> str:
     """Pull a readable error from bluetoothctl output."""
     for line in output.splitlines():

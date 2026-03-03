@@ -57,6 +57,13 @@ async def play(body: dict) -> dict:
     return {"ok": True}
 
 
+@router.post("/stop")
+async def stop() -> dict:
+    """Stop playback."""
+    ok = await spotify.stop()
+    return {"ok": ok}
+
+
 @router.post("/pause")
 async def pause() -> dict:
     """Pause playback."""

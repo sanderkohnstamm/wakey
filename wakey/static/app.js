@@ -5,10 +5,8 @@
 
   var DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   var currentAlarmId = null;
-  var radioPlaying = false;
-  var selectedStation = null;
   var stationsCache = null;
-  var spotifyPollingTimer = null;
+  var radioPlaying = false;
 
   // ── Helpers ──
 
@@ -129,12 +127,9 @@
     for (var i = 0; i < alarms.length; i++) {
       var a = alarms[i];
       var label = a.label ? a.label + " \u00b7 " : "";
-      var source = (a.audio && a.audio.source) || "radio";
-      var sourceLabel = source === "spotify" ? "Spotify" : "Radio";
       html += '<div class="home-alarm ' + (a.enabled ? "" : "disabled") + '" data-id="' + a.id + '">' +
         '<div class="ha-time">' + a.time + '</div>' +
         '<div class="ha-info">' + label + daysText(a.days) + '</div>' +
-        '<span class="ha-source ' + source + '">' + sourceLabel + '</span>' +
         '<label class="toggle" onclick="event.stopPropagation()">' +
           '<input type="checkbox" ' + (a.enabled ? "checked" : "") + ' data-alarm-id="' + a.id + '">' +
           '<span class="slider"></span>' +
@@ -175,28 +170,12 @@
 
   // ── Navigation ──
 
-  $("#btn-go-music").addEventListener("click", function () {
-    loadMusicView();
-    showView("music");
-  });
-
-  $("#btn-go-hue").addEventListener("click", function () {
-    loadLightsView();
-    showView("hue");
-  });
-
   $("#btn-go-settings").addEventListener("click", function () {
     loadSettingsView();
     showView("settings");
   });
 
   $("#btn-back-main").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
-  $("#btn-back-main-music").addEventListener("click", function () {
-    stopSpotifyPolling();
-    loadHomeAlarms();
-    showView("main");
-  });
-  $("#btn-back-main-hue").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
   $("#btn-back-main-settings").addEventListener("click", function () { loadHomeAlarms(); showView("main"); });
 
   // ── Add alarm ──
@@ -206,9 +185,6 @@
     $("#edit-title").textContent = "New Alarm";
     $("#btn-delete-alarm").style.display = "none";
     resetForm();
-    loadStations($("#f-station"), null);
-    loadSpotifyPresetsForEdit("");
-    loadHueRoomsForEdit([]);
     showView("edit");
   });
 
@@ -231,27 +207,6 @@
           pills[i].classList.toggle("active", a.days.indexOf(day) !== -1);
         }
 
-        // Source toggle
-        var source = a.audio.source || "radio";
-        setSourceToggle(source);
-
-        loadStations($("#f-station"), a.audio.station);
-        loadSpotifyPresetsForEdit(a.audio.spotify_uri);
-        $("#f-volume").value = a.audio.volume;
-        $("#f-volume-val").textContent = a.audio.volume;
-
-        $("#f-hue-enabled").checked = a.hue.enabled;
-        // Multi-room: pass rooms list and fall back to single room
-        var rooms = a.hue.rooms || [];
-        if (rooms.length === 0 && a.hue.room_id) {
-          rooms = [{ id: a.hue.room_id, name: a.hue.room_name || "" }];
-        }
-        loadHueRoomsForEdit(rooms);
-        loadHueScenesForEdit(rooms, a.hue.scene_id);
-        $("#f-hue-warmth").value = (a.hue.warmth !== undefined) ? a.hue.warmth : 326;
-        $("#f-hue-offset").value = a.hue.offset_minutes;
-        $("#f-offset-val").textContent = a.hue.offset_minutes;
-
         $("#f-snooze").value = a.snooze_minutes;
         $("#f-snooze-val").textContent = a.snooze_minutes;
         $("#f-autostop").value = a.auto_stop_minutes;
@@ -269,139 +224,10 @@
       var day = parseInt(pills[i].getAttribute("data-day"));
       pills[i].classList.toggle("active", day < 5);
     }
-    setSourceToggle("radio");
-    $("#f-volume").value = 70;
-    $("#f-volume-val").textContent = "70";
-    $("#f-hue-enabled").checked = true;
-    $("#f-hue-rooms").innerHTML = "";
-    $("#f-hue-scene").innerHTML = '<option value="">None</option>';
-    $("#f-hue-warmth").value = 326;
-    $("#f-hue-offset").value = 20;
-    $("#f-offset-val").textContent = "20";
     $("#f-snooze").value = 9;
     $("#f-snooze-val").textContent = "9";
     $("#f-autostop").value = 30;
     $("#f-autostop-val").textContent = "30";
-  }
-
-  function loadHueRoomsForEdit(selectedRooms) {
-    // selectedRooms: array of {id, name} that should be checked
-    if (!selectedRooms) selectedRooms = [];
-    var container = $("#f-hue-rooms");
-    container.innerHTML = '<span class="loading-placeholder">Loading rooms...</span>';
-    fetch("/api/hue/rooms")
-      .then(function (r) { return r.json(); })
-      .then(function (rooms) {
-        if (rooms.length === 0) {
-          container.innerHTML = '<span class="hint">No rooms (configure Hue first)</span>';
-          return;
-        }
-        var selectedIds = {};
-        for (var s = 0; s < selectedRooms.length; s++) {
-          selectedIds[selectedRooms[s].id] = true;
-        }
-        var html = "";
-        for (var i = 0; i < rooms.length; i++) {
-          var r = rooms[i];
-          var checked = selectedIds[r.id] ? " checked" : "";
-          html += '<label class="room-checkbox">' +
-            '<input type="checkbox" data-room-id="' + r.id + '" data-room-name="' + r.name + '"' + checked + '> ' +
-            r.name +
-          '</label>';
-        }
-        container.innerHTML = html;
-        // When rooms change, reload scenes
-        var boxes = container.querySelectorAll("input");
-        for (var j = 0; j < boxes.length; j++) {
-          boxes[j].addEventListener("change", function () {
-            var sel = getSelectedRooms();
-            loadHueScenesForEdit(sel, "");
-          });
-        }
-      })
-      .catch(function () {
-        container.innerHTML = '<span class="hint">Error loading rooms</span>';
-      });
-  }
-
-  function getSelectedRooms() {
-    var boxes = $$("#f-hue-rooms input:checked");
-    var rooms = [];
-    for (var i = 0; i < boxes.length; i++) {
-      rooms.push({
-        id: boxes[i].getAttribute("data-room-id"),
-        name: boxes[i].getAttribute("data-room-name")
-      });
-    }
-    return rooms;
-  }
-
-  function loadHueScenesForEdit(rooms, selectedSceneId) {
-    var sel = $("#f-hue-scene");
-    if (!rooms || rooms.length === 0) {
-      sel.innerHTML = '<option value="">None</option>';
-      return;
-    }
-    // Load scenes for the first selected room
-    var roomId = rooms[0].id;
-    sel.innerHTML = '<option value="">Loading...</option>';
-    fetch("/api/hue/rooms/" + roomId + "/scenes")
-      .then(function (r) { return r.json(); })
-      .then(function (scenes) {
-        var html = '<option value="">None</option>';
-        for (var i = 0; i < scenes.length; i++) {
-          var s = scenes[i];
-          var selected = (s.id === selectedSceneId) ? " selected" : "";
-          html += '<option value="' + s.id + '" data-name="' + s.name + '"' + selected + '>' + s.name + '</option>';
-        }
-        sel.innerHTML = html;
-      })
-      .catch(function () {
-        sel.innerHTML = '<option value="">None</option>';
-      });
-  }
-
-  // ── Source toggle ──
-
-  function setSourceToggle(source) {
-    var btns = $$("#f-source-toggle .source-btn");
-    for (var i = 0; i < btns.length; i++) {
-      btns[i].classList.toggle("active", btns[i].getAttribute("data-source") === source);
-    }
-    $("#f-source-radio").style.display = source === "radio" ? "" : "none";
-    $("#f-source-spotify").style.display = source === "spotify" ? "" : "none";
-  }
-
-  function getSelectedSource() {
-    var active = $("#f-source-toggle .source-btn.active");
-    return active ? active.getAttribute("data-source") : "radio";
-  }
-
-  // Source toggle click handlers
-  var srcBtns = $$("#f-source-toggle .source-btn");
-  for (var si = 0; si < srcBtns.length; si++) {
-    srcBtns[si].addEventListener("click", function () {
-      setSourceToggle(this.getAttribute("data-source"));
-    });
-  }
-
-  function loadSpotifyPresetsForEdit(selectedUri) {
-    var sel = $("#f-spotify-preset");
-    sel.innerHTML = '<option value="">Loading...</option>';
-    fetch("/api/spotify/presets")
-      .then(function (r) { return r.json(); })
-      .then(function (presets) {
-        var html = '<option value="">-- Select --</option>';
-        for (var i = 0; i < presets.length; i++) {
-          var p = presets[i];
-          var selected = (p.uri === selectedUri) ? " selected" : "";
-          html += '<option value="' + p.uri + '" data-name="' + p.name + '"' + selected + '>' + p.name + '</option>';
-        }
-        sel.innerHTML = html;
-      })
-      .catch(function () {
-        sel.innerHTML = '<option value="">-- No presets --</option>';
-      });
   }
 
   // ── Day pills ──
@@ -415,14 +241,8 @@
 
   // ── Range sliders ──
 
-  $("#f-volume").addEventListener("input", function () { $("#f-volume-val").textContent = this.value; });
-  $("#f-hue-offset").addEventListener("input", function () { $("#f-offset-val").textContent = this.value; });
   $("#f-snooze").addEventListener("input", function () { $("#f-snooze-val").textContent = this.value; });
   $("#f-autostop").addEventListener("input", function () { $("#f-autostop-val").textContent = this.value; });
-
-  $("#btn-refresh-rooms").addEventListener("click", function () {
-    loadHueRoomsForEdit([]);
-  });
 
   // ── Stations loader (reusable) ──
 
@@ -451,43 +271,10 @@
       days.push(parseInt(activePills[i].getAttribute("data-day")));
     }
 
-    var selectedRooms = getSelectedRooms();
-    var firstRoom = selectedRooms.length > 0 ? selectedRooms[0] : { id: "", name: "" };
-
-    var sceneSel = $("#f-hue-scene");
-    var sceneOption = sceneSel.options[sceneSel.selectedIndex];
-    var sceneId = sceneSel.value;
-    var sceneName = (sceneOption && sceneId) ? sceneOption.textContent : "";
-
-    var source = getSelectedSource();
-    var spotifySel = $("#f-spotify-preset");
-    var spotifyOption = spotifySel.options[spotifySel.selectedIndex];
-    var spotifyUri = spotifySel.value || "";
-    var spotifyName = (spotifyOption && spotifyUri) ? spotifyOption.textContent : "";
-
     var body = {
       time: $("#f-time").value,
       label: $("#f-label").value,
       days: days,
-      hue: {
-        room_id: firstRoom.id,
-        room_name: firstRoom.name,
-        rooms: selectedRooms,
-        scene_id: sceneId,
-        scene_name: sceneName,
-        warmth: parseInt($("#f-hue-warmth").value),
-        offset_minutes: parseInt($("#f-hue-offset").value),
-        enabled: $("#f-hue-enabled").checked
-      },
-      audio: {
-        source: source,
-        station: $("#f-station").value,
-        spotify_uri: spotifyUri,
-        spotify_name: spotifyName,
-        volume: parseInt($("#f-volume").value),
-        ramp_seconds: 30,
-        enabled: true
-      },
       snooze_minutes: parseInt($("#f-snooze").value),
       auto_stop_minutes: parseInt($("#f-autostop").value)
     };
@@ -513,501 +300,314 @@
   });
 
   // ═══════════════════════════════════════
-  // ── Music View ──
+  // ── Foldout sections ──
   // ═══════════════════════════════════════
 
-  // Music sub-tabs
-  var musicTabs = $$(".music-tab");
-  for (var mt = 0; mt < musicTabs.length; mt++) {
-    musicTabs[mt].addEventListener("click", function () {
-      var tab = this.getAttribute("data-tab");
-      var allTabs = $$(".music-tab");
-      for (var i = 0; i < allTabs.length; i++) {
-        allTabs[i].classList.toggle("active", allTabs[i] === this);
-      }
-      var allPanels = $$(".music-panel");
-      for (var j = 0; j < allPanels.length; j++) {
-        allPanels[j].classList.toggle("active", allPanels[j].id === "music-" + tab);
-      }
-      if (tab === "spotify") {
-        loadSpotifyPanel();
-      }
-    });
-  }
-
-  function loadMusicView() {
-    // Load radio
-    loadRadioView();
-    // Load BT volumes
-    loadMusicBtVolumes();
-    // Check active tab
-    var activeTab = $(".music-tab.active");
-    if (activeTab && activeTab.getAttribute("data-tab") === "spotify") {
-      loadSpotifyPanel();
-    }
-  }
-
-  // ── Radio ──
-
-  function loadRadioView() {
-    var el = $("#radio-status");
-    el.textContent = "";
-    el.className = "status-msg";
-
-    fetch("/api/config/test-radio/status")
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        if (data.playing) {
-          radioPlaying = true;
-          $("#radio-indicator").className = "radio-indicator live";
-          if (selectedStation) {
-            $("#radio-now-playing").textContent = selectedStation;
-            $("#radio-now-playing").className = "radio-now-playing active";
-          }
-        }
-      })
-      .catch(function () {});
-
-    fetch("/api/stations")
-      .then(function (r) { return r.json(); })
-      .then(function (stations) {
-        stationsCache = stations;
-        renderStationButtons(stations);
-      });
-  }
-
-  function renderStationButtons(stations) {
-    var el = $("#radio-station-list");
-    var html = "";
-    for (var i = 0; i < stations.length; i++) {
-      var s = stations[i];
-      var active = selectedStation === s.name ? " active" : "";
-      html += '<button class="radio-station-btn' + active + '" data-id="' + s.id + '" data-name="' + s.name + '">' + s.name + '</button>';
-    }
-    el.innerHTML = html;
-
-    var btns = el.querySelectorAll(".radio-station-btn");
-    for (var j = 0; j < btns.length; j++) {
-      btns[j].addEventListener("click", function () {
-        var id = this.getAttribute("data-id");
-        var name = this.getAttribute("data-name");
-        selectStation(id, name);
-      });
-    }
-  }
-
-  function selectStation(id, name) {
-    selectedStation = name;
-    var btns = $$("#radio-station-list .radio-station-btn");
-    for (var i = 0; i < btns.length; i++) {
-      btns[i].classList.toggle("active", btns[i].getAttribute("data-id") === id);
-    }
-    if (radioPlaying) {
-      playStation(id, name);
-    } else {
-      $("#radio-now-playing").textContent = name;
-      $("#radio-now-playing").className = "radio-now-playing";
-    }
-  }
-
-  function playStation(id, name) {
-    var volume = 50; // default, BT volume is per-device now
-    var np = $("#radio-now-playing");
-    var indicator = $("#radio-indicator");
-    np.textContent = "Connecting...";
-    np.className = "radio-now-playing";
-    indicator.className = "radio-indicator";
-
-    json("POST", "/api/config/test-radio", { station: id, volume: volume }).then(function (data) {
-      if (data.ok) {
-        radioPlaying = true;
-        selectedStation = data.station || name;
-        np.textContent = selectedStation;
-        np.className = "radio-now-playing active";
-        indicator.className = "radio-indicator live";
-        $("#radio-status").textContent = "";
-        $("#radio-status").className = "status-msg";
-        // Mutual exclusion: Spotify was stopped by backend, update UI
-        $("#spotify-active").style.display = "none";
-        $("#spotify-idle").style.display = "";
+  function setupFoldout(toggleId, bodyId) {
+    var toggle = document.getElementById(toggleId);
+    var body = document.getElementById(bodyId);
+    toggle.addEventListener("click", function () {
+      var foldout = toggle.closest(".foldout");
+      var open = body.style.display !== "none";
+      if (open) {
+        body.style.display = "none";
+        foldout.classList.remove("open");
       } else {
-        radioPlaying = false;
-        np.textContent = "Failed to play";
-        np.className = "radio-now-playing";
-        indicator.className = "radio-indicator";
-        $("#radio-status").textContent = data.error || "Playback failed";
-        $("#radio-status").className = "status-msg err";
+        body.style.display = "";
+        foldout.classList.add("open");
       }
     });
   }
 
-  $("#btn-radio-play").addEventListener("click", function () {
-    var activeBtn = $("#radio-station-list .radio-station-btn.active");
-    var id, name;
-    if (activeBtn) {
-      id = activeBtn.getAttribute("data-id");
-      name = activeBtn.getAttribute("data-name");
-    } else if (stationsCache && stationsCache.length > 0) {
-      id = stationsCache[0].id;
-      name = stationsCache[0].name;
-      selectStation(id, name);
+  setupFoldout("foldout-music-toggle", "foldout-music");
+  setupFoldout("foldout-lights-toggle", "foldout-lights");
+
+  // ═══════════════════════════════════════
+  // ── Music foldout (global config) ──
+  // ═══════════════════════════════════════
+
+  function loadGlobalAudioConfig() {
+    fetch("/api/config/audio")
+      .then(function (r) { return r.json(); })
+      .then(function (cfg) {
+        setGlobalSourceToggle(cfg.source || "radio");
+        loadStations($("#g-station"), cfg.station);
+        loadSpotifyPresetsForGlobal(cfg.spotify_uri);
+        $("#g-volume").value = cfg.volume;
+        $("#g-volume-val").textContent = cfg.volume;
+        $("#g-ramp").value = cfg.ramp_seconds;
+        $("#g-ramp-val").textContent = cfg.ramp_seconds;
+      });
+  }
+
+  function saveGlobalAudioConfig() {
+    var source = getGlobalSelectedSource();
+    var spotifySel = $("#g-spotify-preset");
+    var spotifyOption = spotifySel.options[spotifySel.selectedIndex];
+    var spotifyUri = spotifySel.value || "";
+    var spotifyName = (spotifyOption && spotifyUri) ? spotifyOption.textContent : "";
+
+    var body = {
+      source: source,
+      station: $("#g-station").value,
+      spotify_uri: spotifyUri,
+      spotify_name: spotifyName,
+      volume: parseInt($("#g-volume").value),
+      ramp_seconds: parseInt($("#g-ramp").value),
+      enabled: true
+    };
+    json("PUT", "/api/config/audio", body);
+  }
+
+  // Source toggle
+  function setGlobalSourceToggle(source) {
+    var btns = $$("#g-source-toggle .source-btn");
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle("active", btns[i].getAttribute("data-source") === source);
+    }
+    $("#g-source-radio").style.display = source === "radio" ? "" : "none";
+    $("#g-source-spotify").style.display = source === "spotify" ? "" : "none";
+  }
+
+  function getGlobalSelectedSource() {
+    var active = $("#g-source-toggle .source-btn.active");
+    return active ? active.getAttribute("data-source") : "radio";
+  }
+
+  var gSrcBtns = $$("#g-source-toggle .source-btn");
+  for (var gsi = 0; gsi < gSrcBtns.length; gsi++) {
+    gSrcBtns[gsi].addEventListener("click", function () {
+      setGlobalSourceToggle(this.getAttribute("data-source"));
+      saveGlobalAudioConfig();
+    });
+  }
+
+  function loadSpotifyPresetsForGlobal(selectedUri) {
+    var sel = $("#g-spotify-preset");
+    sel.innerHTML = '<option value="">Loading...</option>';
+    fetch("/api/spotify/presets")
+      .then(function (r) { return r.json(); })
+      .then(function (presets) {
+        var html = '<option value="">-- Select --</option>';
+        for (var i = 0; i < presets.length; i++) {
+          var p = presets[i];
+          var selected = (p.uri === selectedUri) ? " selected" : "";
+          html += '<option value="' + p.uri + '" data-name="' + p.name + '"' + selected + '>' + p.name + '</option>';
+        }
+        sel.innerHTML = html;
+      })
+      .catch(function () {
+        sel.innerHTML = '<option value="">-- No presets --</option>';
+      });
+  }
+
+  // Auto-save on change
+  $("#g-volume").addEventListener("input", function () { $("#g-volume-val").textContent = this.value; });
+  $("#g-volume").addEventListener("change", function () { saveGlobalAudioConfig(); });
+  $("#g-ramp").addEventListener("input", function () { $("#g-ramp-val").textContent = this.value; });
+  $("#g-ramp").addEventListener("change", function () { saveGlobalAudioConfig(); });
+  $("#g-station").addEventListener("change", function () { saveGlobalAudioConfig(); });
+  $("#g-spotify-preset").addEventListener("change", function () { saveGlobalAudioConfig(); });
+
+  // Test music
+  $("#btn-test-music").addEventListener("click", function () {
+    var source = getGlobalSelectedSource();
+    var statusEl = $("#g-music-status");
+    statusEl.textContent = "Starting...";
+    statusEl.className = "status-msg";
+
+    if (source === "spotify") {
+      var uri = $("#g-spotify-preset").value;
+      if (!uri) {
+        statusEl.textContent = "Select a Spotify preset first";
+        statusEl.className = "status-msg err";
+        return;
+      }
+      json("POST", "/api/spotify/play", { uri: uri }).then(function (data) {
+        if (data.ok) {
+          radioPlaying = false;
+          statusEl.textContent = "Playing via Spotify";
+          statusEl.className = "status-msg ok";
+        } else {
+          statusEl.textContent = data.error || "Spotify playback failed";
+          statusEl.className = "status-msg err";
+        }
+      });
     } else {
-      return;
-    }
-    playStation(id, name);
-  });
-
-  $("#btn-radio-stop").addEventListener("click", function () {
-    json("POST", "/api/config/test-radio/stop", {}).then(function () {
-      radioPlaying = false;
-      selectedStation = null;
-      $("#radio-now-playing").textContent = "Select a station";
-      $("#radio-now-playing").className = "radio-now-playing";
-      $("#radio-indicator").className = "radio-indicator";
-      $("#radio-status").textContent = "";
-      $("#radio-status").className = "status-msg";
-      var btns = $$("#radio-station-list .radio-station-btn");
-      for (var i = 0; i < btns.length; i++) {
-        btns[i].classList.remove("active");
-      }
-    });
-  });
-
-  // ── Music BT Volume Sliders ──
-
-  function loadMusicBtVolumes() {
-    var el = $("#music-bt-volumes");
-    fetch("/api/bluetooth/status")
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        var devices = data.devices || [];
-        if (devices.length === 0) {
-          el.innerHTML = "";
-          return;
-        }
-        var html = '<div class="music-vol-header section-header">Speaker Volume</div>';
-        for (var i = 0; i < devices.length; i++) {
-          var d = devices[i];
-          html += '<div class="music-vol-row">' +
-            '<span class="music-vol-name">' + d.name + '</span>' +
-            '<span class="music-vol-val" data-mac="' + d.mac + '">--</span>%' +
-            '<input type="range" min="0" max="100" value="50" class="music-vol-slider" data-mac="' + d.mac + '">' +
-          '</div>';
-        }
-        el.innerHTML = html;
-
-        // Load actual volumes
-        fetch("/api/bluetooth/volumes")
-          .then(function (r) { return r.json(); })
-          .then(function (vols) {
-            for (var i = 0; i < vols.length; i++) {
-              var v = vols[i];
-              var slider = el.querySelector('.music-vol-slider[data-mac="' + v.mac + '"]');
-              var valEl = el.querySelector('.music-vol-val[data-mac="' + v.mac + '"]');
-              if (slider) slider.value = v.volume;
-              if (valEl) valEl.textContent = v.volume;
-            }
-            // Attach events
-            var sliders = el.querySelectorAll(".music-vol-slider");
-            for (var j = 0; j < sliders.length; j++) {
-              sliders[j].addEventListener("input", function () {
-                var mac = this.getAttribute("data-mac");
-                var valEl = el.querySelector('.music-vol-val[data-mac="' + mac + '"]');
-                if (valEl) valEl.textContent = this.value;
-              });
-              sliders[j].addEventListener("change", function () {
-                var mac = this.getAttribute("data-mac");
-                json("POST", "/api/bluetooth/volume", { mac: mac, volume: parseInt(this.value) });
-              });
-            }
-          });
-      })
-      .catch(function () {
-        el.innerHTML = "";
-      });
-  }
-
-  // ═══════════════════════════════════════
-  // ── Spotify (via go-librespot) ──
-  // ═══════════════════════════════════════
-
-  function loadSpotifyPanel() {
-    $("#spotify-unavailable").style.display = "none";
-    $("#spotify-idle").style.display = "none";
-    $("#spotify-active").style.display = "none";
-
-    pollSpotifyStatus();
-    startSpotifyPolling();
-  }
-
-  function startSpotifyPolling() {
-    stopSpotifyPolling();
-    spotifyPollingTimer = setInterval(pollSpotifyStatus, 3000);
-  }
-
-  function stopSpotifyPolling() {
-    if (spotifyPollingTimer) {
-      clearInterval(spotifyPollingTimer);
-      spotifyPollingTimer = null;
-    }
-  }
-
-  function pollSpotifyStatus() {
-    fetch("/api/spotify/status")
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        if (!data.available) {
-          $("#spotify-unavailable").style.display = "";
-          $("#spotify-idle").style.display = "none";
-          $("#spotify-active").style.display = "none";
-          $("#spotify-presets-section").style.display = "none";
-          return;
-        }
-
-        $("#spotify-unavailable").style.display = "none";
-        if ($("#spotify-presets-section").style.display === "none") {
-          $("#spotify-presets-section").style.display = "";
-          loadSpotifyPresets();
-        }
-
-        if (data.stopped && !data.track && !data.playing) {
-          // Connected but nothing playing, no session
-          $("#spotify-idle").style.display = "";
-          $("#spotify-active").style.display = "none";
-          return;
-        }
-
-        // Has a session (playing, paused, or has track info)
-        $("#spotify-idle").style.display = "none";
-        $("#spotify-active").style.display = "";
-
-        var trackEl = $("#sp-track");
-        var artistEl = $("#sp-artist");
-        var playBtn = $("#btn-sp-play");
-
-        if (data.track) {
-          trackEl.textContent = data.track;
-          artistEl.textContent = data.artist || "";
-        } else if (data.playing) {
-          trackEl.textContent = "Playing...";
-          artistEl.textContent = "";
+      var station = $("#g-station").value;
+      var volume = parseInt($("#g-volume").value);
+      json("POST", "/api/config/test-radio", { station: station, volume: volume }).then(function (data) {
+        if (data.ok) {
+          radioPlaying = true;
+          statusEl.textContent = "Playing " + (data.station || "radio");
+          statusEl.className = "status-msg ok";
         } else {
-          trackEl.textContent = "Not playing";
-          artistEl.textContent = "";
+          statusEl.textContent = data.error || "Playback failed";
+          statusEl.className = "status-msg err";
         }
-        playBtn.textContent = data.playing ? "Pause" : "Play";
-
-        // Update toggle states
-        var shuffleBtn = $("#btn-sp-shuffle");
-        var repeatBtn = $("#btn-sp-repeat");
-        shuffleBtn.classList.toggle("active", !!data.shuffle);
-        repeatBtn.classList.toggle("active", !!data.repeat);
-      })
-      .catch(function () {
-        $("#spotify-unavailable").style.display = "";
-        $("#spotify-idle").style.display = "none";
-        $("#spotify-active").style.display = "none";
       });
-  }
-
-  // Play/Pause
-  $("#btn-sp-play").addEventListener("click", function () {
-    json("POST", "/api/spotify/playpause", {}).then(function () {
-      setTimeout(pollSpotifyStatus, 300);
-    });
+    }
   });
 
-  // Skip
-  $("#btn-sp-prev").addEventListener("click", function () {
-    json("POST", "/api/spotify/previous", {}).then(function () {
-      setTimeout(pollSpotifyStatus, 500);
-    });
+  // Stop music
+  $("#btn-stop-music").addEventListener("click", function () {
+    var statusEl = $("#g-music-status");
+    json("POST", "/api/config/test-radio/stop", {});
+    json("POST", "/api/spotify/stop", {});
+    radioPlaying = false;
+    statusEl.textContent = "Stopped";
+    statusEl.className = "status-msg";
   });
 
-  $("#btn-sp-next").addEventListener("click", function () {
-    json("POST", "/api/spotify/next", {}).then(function () {
-      setTimeout(pollSpotifyStatus, 500);
-    });
-  });
-
-  // Shuffle / Repeat
-  $("#btn-sp-shuffle").addEventListener("click", function () {
-    var isActive = this.classList.contains("active");
-    json("POST", "/api/spotify/shuffle", { enabled: !isActive }).then(function () {
-      setTimeout(pollSpotifyStatus, 300);
-    });
-  });
-
-  $("#btn-sp-repeat").addEventListener("click", function () {
-    var isActive = this.classList.contains("active");
-    json("POST", "/api/spotify/repeat", { enabled: !isActive }).then(function () {
-      setTimeout(pollSpotifyStatus, 300);
-    });
-  });
+  // Load on page load
+  loadGlobalAudioConfig();
 
   // ═══════════════════════════════════════
-  // ── Lights View ──
+  // ── Lights foldout (global config) ──
   // ═══════════════════════════════════════
 
-  var lightsRoomData = [];
-
-  function loadLightsView() {
-    $("#lights-status").textContent = "";
-    $("#lights-status").className = "status-msg";
-    $("#hue-scenes-panel").style.display = "none";
-
-    fetch("/api/hue/status")
+  function loadGlobalHueConfig() {
+    fetch("/api/config/hue-alarm")
       .then(function (r) { return r.json(); })
-      .then(function (data) {
-        if (data.connected) {
-          $("#hue-not-configured").style.display = "none";
-          $("#hue-rooms-container").style.display = "";
-          loadHueRooms();
-        } else {
-          $("#hue-not-configured").style.display = "";
-          $("#hue-rooms-container").style.display = "none";
+      .then(function (cfg) {
+        $("#g-hue-enabled").checked = cfg.enabled;
+        var rooms = cfg.rooms || [];
+        if (rooms.length === 0 && cfg.room_id) {
+          rooms = [{ id: cfg.room_id, name: cfg.room_name || "" }];
         }
-      })
-      .catch(function () {
-        $("#hue-not-configured").style.display = "";
-        $("#hue-rooms-container").style.display = "none";
+        loadGlobalHueRooms(rooms);
+        loadGlobalHueScenes(rooms, cfg.scene_id);
+        $("#g-hue-warmth").value = (cfg.warmth !== undefined) ? cfg.warmth : 326;
+        $("#g-hue-offset").value = cfg.offset_minutes;
+        $("#g-offset-val").textContent = cfg.offset_minutes;
       });
   }
 
-  $("#btn-goto-hue-settings").addEventListener("click", function () {
-    loadSettingsView();
-    showView("settings");
-  });
+  function saveGlobalHueConfig() {
+    var rooms = getGlobalSelectedRooms();
+    var firstRoom = rooms.length > 0 ? rooms[0] : { id: "", name: "" };
+    var sceneSel = $("#g-hue-scene");
+    var sceneOption = sceneSel.options[sceneSel.selectedIndex];
+    var sceneId = sceneSel.value;
+    var sceneName = (sceneOption && sceneId) ? sceneOption.textContent : "";
 
-  function loadHueRooms() {
-    fetch("/api/hue/rooms?state=true")
+    var body = {
+      room_id: firstRoom.id,
+      room_name: firstRoom.name,
+      rooms: rooms,
+      scene_id: sceneId,
+      scene_name: sceneName,
+      warmth: parseInt($("#g-hue-warmth").value),
+      offset_minutes: parseInt($("#g-hue-offset").value),
+      enabled: $("#g-hue-enabled").checked
+    };
+    json("PUT", "/api/config/hue-alarm", body);
+  }
+
+  function loadGlobalHueRooms(selectedRooms) {
+    if (!selectedRooms) selectedRooms = [];
+    var container = $("#g-hue-rooms");
+    container.innerHTML = '<span class="loading-placeholder">Loading rooms...</span>';
+    fetch("/api/hue/rooms")
       .then(function (r) { return r.json(); })
       .then(function (rooms) {
-        lightsRoomData = rooms;
-        renderHueRooms(rooms);
+        if (rooms.length === 0) {
+          container.innerHTML = '<span class="hint">No rooms (configure Hue first)</span>';
+          return;
+        }
+        var selectedIds = {};
+        for (var s = 0; s < selectedRooms.length; s++) {
+          selectedIds[selectedRooms[s].id] = true;
+        }
+        var html = "";
+        for (var i = 0; i < rooms.length; i++) {
+          var r = rooms[i];
+          var checked = selectedIds[r.id] ? " checked" : "";
+          html += '<label class="room-checkbox">' +
+            '<input type="checkbox" data-room-id="' + r.id + '" data-room-name="' + r.name + '"' + checked + '> ' +
+            r.name +
+          '</label>';
+        }
+        container.innerHTML = html;
+        var boxes = container.querySelectorAll("input");
+        for (var j = 0; j < boxes.length; j++) {
+          boxes[j].addEventListener("change", function () {
+            var sel = getGlobalSelectedRooms();
+            loadGlobalHueScenes(sel, "");
+            saveGlobalHueConfig();
+          });
+        }
+      })
+      .catch(function () {
+        container.innerHTML = '<span class="hint">Error loading rooms</span>';
       });
   }
 
-  function renderHueRooms(rooms) {
-    var el = $("#hue-rooms");
-    if (rooms.length === 0) {
-      el.innerHTML = '<div class="home-alarms-empty">No rooms found on bridge</div>';
+  function getGlobalSelectedRooms() {
+    var boxes = $$("#g-hue-rooms input:checked");
+    var rooms = [];
+    for (var i = 0; i < boxes.length; i++) {
+      rooms.push({
+        id: boxes[i].getAttribute("data-room-id"),
+        name: boxes[i].getAttribute("data-room-name")
+      });
+    }
+    return rooms;
+  }
+
+  function loadGlobalHueScenes(rooms, selectedSceneId) {
+    var sel = $("#g-hue-scene");
+    if (!rooms || rooms.length === 0) {
+      sel.innerHTML = '<option value="">None</option>';
       return;
     }
-    var html = "";
-    for (var i = 0; i < rooms.length; i++) {
-      var r = rooms[i];
-      var briPct = Math.round(r.bri / 254 * 100);
-      html += '<div class="hue-room-card" data-room-id="' + r.id + '">' +
-        '<div class="hue-room-header">' +
-          '<span class="hue-room-name">' + r.name + '</span>' +
-          '<label class="toggle">' +
-            '<input type="checkbox" ' + (r.on ? "checked" : "") + ' data-room-id="' + r.id + '" class="hue-room-toggle">' +
-            '<span class="slider"></span>' +
-          '</label>' +
-        '</div>' +
-        '<div class="hue-room-controls">' +
-          '<div class="form-group">' +
-            '<label>Brightness <span class="hue-bri-val" data-room="' + r.id + '">' + briPct + '</span>%</label>' +
-            '<input type="range" min="1" max="100" value="' + briPct + '" class="hue-bri-slider" data-room-id="' + r.id + '">' +
-          '</div>' +
-          '<div class="form-group">' +
-            '<label>Warmth</label>' +
-            '<input type="range" min="153" max="500" value="' + r.ct + '" class="hue-ct-slider" data-room-id="' + r.id + '">' +
-          '</div>' +
-          '<div class="hue-room-actions">' +
-            '<button class="btn btn-small hue-scenes-btn" data-room-id="' + r.id + '" data-room-name="' + r.name + '">Scenes</button>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
-    }
-    el.innerHTML = html;
-
-    var toggles = el.querySelectorAll(".hue-room-toggle");
-    for (var j = 0; j < toggles.length; j++) {
-      toggles[j].addEventListener("change", function () {
-        var rid = this.getAttribute("data-room-id");
-        json("PUT", "/api/hue/rooms/" + rid + "/state", { on: this.checked });
-      });
-    }
-
-    var briSliders = el.querySelectorAll(".hue-bri-slider");
-    for (var k = 0; k < briSliders.length; k++) {
-      briSliders[k].addEventListener("input", function () {
-        var rid = this.getAttribute("data-room-id");
-        var valEl = el.querySelector('.hue-bri-val[data-room="' + rid + '"]');
-        if (valEl) valEl.textContent = this.value;
-      });
-      briSliders[k].addEventListener("change", function () {
-        var rid = this.getAttribute("data-room-id");
-        var bri = Math.round(parseInt(this.value) / 100 * 254);
-        json("PUT", "/api/hue/rooms/" + rid + "/state", { on: true, bri: bri });
-        var toggle = el.querySelector('.hue-room-toggle[data-room-id="' + rid + '"]');
-        if (toggle) toggle.checked = true;
-      });
-    }
-
-    var ctSliders = el.querySelectorAll(".hue-ct-slider");
-    for (var m = 0; m < ctSliders.length; m++) {
-      ctSliders[m].addEventListener("change", function () {
-        var rid = this.getAttribute("data-room-id");
-        var ct = parseInt(this.value);
-        json("PUT", "/api/hue/rooms/" + rid + "/state", { on: true, ct: ct });
-        var toggle = el.querySelector('.hue-room-toggle[data-room-id="' + rid + '"]');
-        if (toggle) toggle.checked = true;
-      });
-    }
-
-    var sceneBtns = el.querySelectorAll(".hue-scenes-btn");
-    for (var n = 0; n < sceneBtns.length; n++) {
-      sceneBtns[n].addEventListener("click", function () {
-        var rid = this.getAttribute("data-room-id");
-        var rname = this.getAttribute("data-room-name");
-        openScenes(rid, rname);
-      });
-    }
-  }
-
-  function openScenes(roomId, roomName) {
-    var panel = $("#hue-scenes-panel");
-    var title = $("#hue-scenes-title");
-    var list = $("#hue-scenes-list");
-    title.textContent = roomName + " Scenes";
-    list.innerHTML = '<span class="loading-placeholder">Loading...</span>';
-    panel.style.display = "";
-
+    var roomId = rooms[0].id;
+    sel.innerHTML = '<option value="">Loading...</option>';
     fetch("/api/hue/rooms/" + roomId + "/scenes")
       .then(function (r) { return r.json(); })
       .then(function (scenes) {
-        if (scenes.length === 0) {
-          list.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">No scenes available</span>';
-          return;
-        }
-        var html = "";
+        var html = '<option value="">None</option>';
         for (var i = 0; i < scenes.length; i++) {
           var s = scenes[i];
-          html += '<button class="hue-scene-btn" data-scene-id="' + s.id + '" data-room-id="' + roomId + '">' + s.name + '</button>';
+          var selected = (s.id === selectedSceneId) ? " selected" : "";
+          html += '<option value="' + s.id + '" data-name="' + s.name + '"' + selected + '>' + s.name + '</option>';
         }
-        list.innerHTML = html;
-
-        var btns = list.querySelectorAll(".hue-scene-btn");
-        for (var j = 0; j < btns.length; j++) {
-          btns[j].addEventListener("click", function () {
-            var sid = this.getAttribute("data-scene-id");
-            var rid = this.getAttribute("data-room-id");
-            json("POST", "/api/hue/rooms/" + rid + "/scene", { scene_id: sid }).then(function (data) {
-              if (data.ok) {
-                setTimeout(loadHueRooms, 500);
-              }
-            });
-          });
-        }
+        sel.innerHTML = html;
+      })
+      .catch(function () {
+        sel.innerHTML = '<option value="">None</option>';
       });
   }
 
-  $("#btn-close-scenes").addEventListener("click", function () {
-    $("#hue-scenes-panel").style.display = "none";
+  // Auto-save on change
+  $("#g-hue-enabled").addEventListener("change", function () { saveGlobalHueConfig(); });
+  $("#g-hue-warmth").addEventListener("change", function () { saveGlobalHueConfig(); });
+  $("#g-hue-offset").addEventListener("input", function () { $("#g-offset-val").textContent = this.value; });
+  $("#g-hue-offset").addEventListener("change", function () { saveGlobalHueConfig(); });
+  $("#g-hue-scene").addEventListener("change", function () { saveGlobalHueConfig(); });
+
+  $("#btn-g-refresh-rooms").addEventListener("click", function () {
+    loadGlobalHueRooms([]);
   });
+
+  // Test lights
+  $("#btn-test-lights").addEventListener("click", function () {
+    var statusEl = $("#g-lights-status");
+    statusEl.textContent = "Flashing...";
+    statusEl.className = "status-msg";
+    json("POST", "/api/config/test-lights", {}).then(function (data) {
+      if (data.ok) {
+        statusEl.textContent = "Done";
+        statusEl.className = "status-msg ok";
+      } else {
+        statusEl.textContent = data.error || "Test failed";
+        statusEl.className = "status-msg err";
+      }
+    });
+  });
+
+  // Load on page load
+  loadGlobalHueConfig();
 
   // ═══════════════════════════════════════
   // ── Settings View ──
@@ -1247,122 +847,6 @@
       });
     }
   }
-
-  // ═══════════════════════════════════════
-  // ── Spotify Presets ──
-  // ═══════════════════════════════════════
-
-  var presetsLoaded = false;
-
-  function loadSpotifyPresets() {
-    if (presetsLoaded) return;
-    presetsLoaded = true;
-    fetch("/api/spotify/presets")
-      .then(function (r) { return r.json(); })
-      .then(function (presets) {
-        presetsLoaded = false;
-        renderSpotifyPresets(presets);
-      })
-      .catch(function () { presetsLoaded = false; });
-  }
-
-  function renderSpotifyPresets(presets) {
-    var el = $("#spotify-presets");
-    if (!presets || presets.length === 0) {
-      el.innerHTML = '<div class="preset-empty">No saved playlists yet</div>';
-      return;
-    }
-    var html = "";
-    for (var i = 0; i < presets.length; i++) {
-      var p = presets[i];
-      html += '<div class="preset-card" data-uri="' + p.uri + '">' +
-        '<span class="preset-name">' + p.name + '</span>' +
-        '<button class="btn preset-delete" data-id="' + p.id + '">&times;</button>' +
-      '</div>';
-    }
-    el.innerHTML = html;
-
-    // Play on tap
-    var cards = el.querySelectorAll(".preset-card");
-    for (var j = 0; j < cards.length; j++) {
-      cards[j].addEventListener("click", function (e) {
-        if (e.target.classList.contains("preset-delete")) return;
-        var uri = this.getAttribute("data-uri");
-        var nameEl = this.querySelector(".preset-name");
-        var origName = nameEl.textContent;
-        nameEl.textContent = "Playing...";
-        this.style.pointerEvents = "none";
-        var self = this;
-        json("POST", "/api/spotify/play", { uri: uri }).then(function (data) {
-          nameEl.textContent = origName;
-          self.style.pointerEvents = "";
-          if (data.ok) {
-            // Mutual exclusion: radio was stopped by backend, update UI
-            radioPlaying = false;
-            $("#radio-indicator").className = "radio-indicator";
-            $("#radio-now-playing").textContent = "Select a station";
-            $("#radio-now-playing").className = "radio-now-playing";
-          }
-          setTimeout(pollSpotifyStatus, 500);
-        });
-      });
-    }
-
-    // Delete buttons
-    var delBtns = el.querySelectorAll(".preset-delete");
-    for (var k = 0; k < delBtns.length; k++) {
-      delBtns[k].addEventListener("click", function (e) {
-        e.stopPropagation();
-        var id = this.getAttribute("data-id");
-        this.disabled = true;
-        this.textContent = "...";
-        fetch("/api/spotify/presets/" + id, { method: "DELETE" })
-          .then(function (r) { return r.json(); })
-          .then(function () {
-            presetsLoaded = false;
-            loadSpotifyPresets();
-          });
-      });
-    }
-  }
-
-  // Add preset form
-  $("#btn-add-preset").addEventListener("click", function () {
-    var form = $("#preset-form");
-    form.style.display = form.style.display === "none" ? "" : "none";
-    if (form.style.display !== "none") {
-      $("#preset-name").value = "";
-      $("#preset-uri").value = "";
-      $("#preset-name").focus();
-    }
-  });
-
-  $("#btn-cancel-preset").addEventListener("click", function () {
-    $("#preset-form").style.display = "none";
-  });
-
-  $("#btn-save-preset").addEventListener("click", function () {
-    var name = $("#preset-name").value.trim();
-    var uri = $("#preset-uri").value.trim();
-    if (!uri) return;
-    var btn = this;
-    btn.disabled = true;
-    btn.textContent = "Saving...";
-    json("POST", "/api/spotify/presets", { name: name, uri: uri }).then(function (data) {
-      btn.disabled = false;
-      btn.textContent = "Save";
-      if (data.ok) {
-        $("#preset-form").style.display = "none";
-        presetsLoaded = false;
-        loadSpotifyPresets();
-      } else {
-        alert(data.error || "Failed to save");
-      }
-    }).catch(function () {
-      btn.disabled = false;
-      btn.textContent = "Save";
-    });
-  });
 
   function btAction(mac, action) {
     var statusEl = $("#bt-status");

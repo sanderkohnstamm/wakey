@@ -34,35 +34,38 @@ async def trigger_alarm(alarm: Alarm) -> None:
     logger.info("Triggering alarm %s (%s)", alarm.id, alarm.time)
     state.active_alarm_id = alarm.id
 
-    gcfg = load_config().hue
+    cfg = load_config()
+    gcfg = cfg.hue
+    hue_cfg = cfg.hue_alarm
+    audio_cfg = cfg.audio
 
     # Phase 1: Sunrise
-    offset = alarm.hue.offset_minutes if alarm.hue.enabled else 0
-    if alarm.hue.enabled and offset > 0:
+    offset = hue_cfg.offset_minutes if hue_cfg.enabled else 0
+    if hue_cfg.enabled and offset > 0:
         state.state = AlarmState.SUNRISE
         state.sunrise_start = datetime.now(timezone.utc).isoformat()
-        _sunrise_task = asyncio.create_task(_run_sunrise(alarm, gcfg))
+        _sunrise_task = asyncio.create_task(_run_sunrise(hue_cfg, gcfg))
     else:
         offset = 0
 
     # Phase 2: Audio starts after offset delay
-    _audio_task = asyncio.create_task(_run_audio(alarm, delay_seconds=offset * 60))
+    _audio_task = asyncio.create_task(_run_audio(audio_cfg, delay_seconds=offset * 60))
 
     # Auto-stop
     total_timeout = (offset * 60) + (alarm.auto_stop_minutes * 60)
     _auto_stop_task = asyncio.create_task(_run_auto_stop(total_timeout))
 
 
-async def _run_sunrise(alarm, gcfg) -> None:
+async def _run_sunrise(hue_cfg, gcfg) -> None:
     try:
-        await hue.sunrise_ramp(gcfg, alarm.hue, alarm.hue.offset_minutes)
+        await hue.sunrise_ramp(gcfg, hue_cfg, hue_cfg.offset_minutes)
     except asyncio.CancelledError:
         pass
     except Exception:
         logger.exception("Sunrise ramp failed")
 
 
-async def _run_audio(alarm: Alarm, delay_seconds: int) -> None:
+async def _run_audio(audio_cfg, delay_seconds: int) -> None:
     try:
         if delay_seconds > 0:
             await asyncio.sleep(delay_seconds)
@@ -70,18 +73,18 @@ async def _run_audio(alarm: Alarm, delay_seconds: int) -> None:
         state.state = AlarmState.ACTIVE
         state.audio_start = datetime.now(timezone.utc).isoformat()
 
-        if alarm.audio.enabled:
-            if alarm.audio.source == "spotify" and alarm.audio.spotify_uri:
-                ok = await spotify.play(uri=alarm.audio.spotify_uri)
+        if audio_cfg.enabled:
+            if audio_cfg.source == "spotify" and audio_cfg.spotify_uri:
+                ok = await spotify.play(uri=audio_cfg.spotify_uri)
                 if ok:
                     await _spotify_volume_ramp(
-                        alarm.audio.volume, alarm.audio.ramp_seconds
+                        audio_cfg.volume, audio_cfg.ramp_seconds
                     )
                 else:
                     logger.warning("Spotify play failed, falling back to radio")
-                    await audio.start_playback(alarm.audio)
+                    await audio.start_playback(audio_cfg)
             else:
-                await audio.start_playback(alarm.audio)
+                await audio.start_playback(audio_cfg)
     except asyncio.CancelledError:
         pass
     except Exception:
@@ -131,18 +134,20 @@ async def _run_snooze_resume(alarm: Alarm) -> None:
         await asyncio.sleep(alarm.snooze_minutes * 60)
         state.state = AlarmState.ACTIVE
         state.audio_start = datetime.now(timezone.utc).isoformat()
-        if alarm.audio.enabled:
-            if alarm.audio.source == "spotify" and alarm.audio.spotify_uri:
-                ok = await spotify.play(uri=alarm.audio.spotify_uri)
+
+        audio_cfg = load_config().audio
+        if audio_cfg.enabled:
+            if audio_cfg.source == "spotify" and audio_cfg.spotify_uri:
+                ok = await spotify.play(uri=audio_cfg.spotify_uri)
                 if ok:
                     await _spotify_volume_ramp(
-                        alarm.audio.volume, alarm.audio.ramp_seconds
+                        audio_cfg.volume, audio_cfg.ramp_seconds
                     )
                 else:
                     logger.warning("Spotify play failed on snooze resume, falling back to radio")
-                    await audio.start_playback(alarm.audio)
+                    await audio.start_playback(audio_cfg)
             else:
-                await audio.start_playback(alarm.audio)
+                await audio.start_playback(audio_cfg)
     except asyncio.CancelledError:
         pass
 
