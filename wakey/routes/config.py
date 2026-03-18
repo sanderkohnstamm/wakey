@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from .. import audio, hue, spotify
+from .. import audio, bluetooth, hue, spotify
 from ..config import load_alarms, load_config, save_config
 from ..models import AudioConfig, HueConfig, RADIO_STATIONS
 from ..scheduler import sync_alarms
@@ -24,6 +24,9 @@ async def update_config(body: dict) -> dict:
         hue_data = cfg.hue.model_dump()
         hue_data.update(body["hue"])
         cfg.hue = cfg.hue.model_validate(hue_data)
+    if "audio_output" in body:
+        cfg.audio_output = body["audio_output"]
+        bluetooth.set_scan_enabled(cfg.audio_output == "bluetooth")
     save_config(cfg)
     return cfg.model_dump()
 

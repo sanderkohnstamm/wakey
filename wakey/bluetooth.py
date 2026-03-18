@@ -25,16 +25,28 @@ def _has_normal_name(device: dict) -> bool:
     return not _MAC_RE.match(name)
 
 
+_scan_enabled = True
+
+
+def set_scan_enabled(enabled: bool) -> None:
+    """Enable or disable periodic BT scanning."""
+    global _scan_enabled, _scan_cache
+    _scan_enabled = enabled
+    if not enabled:
+        _scan_cache = []
+
+
 async def periodic_scan_loop(interval: int = 30) -> None:
     """Periodically scan for BT devices and update the cache."""
     global _scan_cache
     while True:
-        try:
-            devices = await scan(duration=8)
-            _scan_cache = [d for d in devices if _has_normal_name(d)]
-            logger.info("BT scan cache updated: %d device(s)", len(_scan_cache))
-        except Exception:
-            logger.exception("Error in periodic BT scan")
+        if _scan_enabled:
+            try:
+                devices = await scan(duration=8)
+                _scan_cache = [d for d in devices if _has_normal_name(d)]
+                logger.info("BT scan cache updated: %d device(s)", len(_scan_cache))
+            except Exception:
+                logger.exception("Error in periodic BT scan")
         await asyncio.sleep(interval)
 
 

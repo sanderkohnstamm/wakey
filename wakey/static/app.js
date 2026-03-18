@@ -217,6 +217,44 @@
   setupFoldout("foldout-advanced-toggle", "foldout-advanced");
 
   // ═══════════════════════════════════════
+  // ── Audio output toggle (AUX / Bluetooth) ──
+  // ═══════════════════════════════════════
+
+  var currentAudioOutput = "aux";
+
+  function setOutputToggle(output) {
+    currentAudioOutput = output;
+    var btns = $$("#g-output-toggle .source-btn");
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle("active", btns[i].getAttribute("data-output") === output);
+    }
+    var btSection = $("#g-bt-speakers");
+    if (btSection) {
+      btSection.style.display = output === "bluetooth" ? "" : "none";
+    }
+  }
+
+  function saveAudioOutput(output) {
+    json("PUT", "/api/config", { audio_output: output });
+  }
+
+  var outBtns = $$("#g-output-toggle .source-btn");
+  for (var oi = 0; oi < outBtns.length; oi++) {
+    outBtns[oi].addEventListener("click", function () {
+      var output = this.getAttribute("data-output");
+      setOutputToggle(output);
+      saveAudioOutput(output);
+    });
+  }
+
+  // Load initial output setting
+  fetch("/api/config")
+    .then(function (r) { return r.json(); })
+    .then(function (cfg) {
+      setOutputToggle(cfg.audio_output || "aux");
+    });
+
+  // ═══════════════════════════════════════
   // ── Music foldout (global config) ──
   // ═══════════════════════════════════════
 
@@ -261,6 +299,8 @@
     }
     $("#g-source-radio").style.display = source === "radio" ? "" : "none";
     $("#g-source-spotify").style.display = source === "spotify" ? "" : "none";
+    $("#g-controls-radio").style.display = source === "radio" ? "" : "none";
+    $("#g-controls-spotify").style.display = source === "spotify" ? "" : "none";
   }
 
   function getGlobalSelectedSource() {
@@ -303,54 +343,130 @@
   $("#g-station").addEventListener("change", function () { saveGlobalAudioConfig(); });
   $("#g-spotify-preset").addEventListener("change", function () { saveGlobalAudioConfig(); });
 
-  // Test music
-  $("#btn-test-music").addEventListener("click", function () {
-    var source = getGlobalSelectedSource();
+  // ── Radio controls ──
+
+  $("#btn-radio-play").addEventListener("click", function () {
     var statusEl = $("#g-music-status");
+    var station = $("#g-station").value;
+    var volume = parseInt($("#g-volume").value);
     statusEl.textContent = "Starting...";
     statusEl.className = "status-msg";
+    json("POST", "/api/config/test-radio", { station: station, volume: volume }).then(function (data) {
+      if (data.ok) {
+        radioPlaying = true;
+        statusEl.textContent = "Playing " + (data.station || "radio");
+        statusEl.className = "status-msg ok";
+      } else {
+        statusEl.textContent = data.error || "Playback failed";
+        statusEl.className = "status-msg err";
+      }
+    });
+  });
 
-    if (source === "spotify") {
+  $("#btn-radio-stop").addEventListener("click", function () {
+    var statusEl = $("#g-music-status");
+    json("POST", "/api/config/test-radio/stop", {});
+    radioPlaying = false;
+    statusEl.textContent = "Stopped";
+    statusEl.className = "status-msg";
+  });
+
+  // ── Spotify controls ──
+
+  var spotifyPlaying = false;
+
+  $("#btn-sp-playpause").addEventListener("click", function () {
+    var statusEl = $("#g-music-status");
+    if (!spotifyPlaying) {
       var uri = $("#g-spotify-preset").value;
       if (!uri) {
-        statusEl.textContent = "Select a Spotify preset first";
+        statusEl.textContent = "Select a playlist first";
         statusEl.className = "status-msg err";
         return;
       }
+      statusEl.textContent = "Starting...";
+      statusEl.className = "status-msg";
       json("POST", "/api/spotify/play", { uri: uri }).then(function (data) {
         if (data.ok) {
-          radioPlaying = false;
-          statusEl.textContent = "Playing via Spotify";
-          statusEl.className = "status-msg ok";
-        } else {
-          statusEl.textContent = data.error || "Spotify playback failed";
-          statusEl.className = "status-msg err";
-        }
-      });
-    } else {
-      var station = $("#g-station").value;
-      var volume = parseInt($("#g-volume").value);
-      json("POST", "/api/config/test-radio", { station: station, volume: volume }).then(function (data) {
-        if (data.ok) {
-          radioPlaying = true;
-          statusEl.textContent = "Playing " + (data.station || "radio");
-          statusEl.className = "status-msg ok";
+          spotifyPlaying = true;
+          $("#btn-sp-playpause").textContent = "Pause";
+          statusEl.textContent = "";
+          pollSpotifyStatus();
         } else {
           statusEl.textContent = data.error || "Playback failed";
           statusEl.className = "status-msg err";
         }
       });
+    } else {
+      json("POST", "/api/spotify/playpause", {}).then(function (data) {
+        if (data.ok) {
+          spotifyPlaying = !spotifyPlaying;
+          $("#btn-sp-playpause").textContent = spotifyPlaying ? "Pause" : "Play";
+          if (!spotifyPlaying) {
+            $("#g-now-playing").style.display = "none";
+          }
+        }
+      });
     }
   });
 
-  // Stop music
-  $("#btn-stop-music").addEventListener("click", function () {
-    var statusEl = $("#g-music-status");
-    json("POST", "/api/config/test-radio/stop", {});
-    json("POST", "/api/spotify/stop", {});
-    radioPlaying = false;
-    statusEl.textContent = "Stopped";
+  $("#btn-sp-next").addEventListener("click", function () {
+    json("POST", "/api/spotify/next", {}).then(function () {
+      setTimeout(pollSpotifyStatus, 500);
+    });
+  });
+
+  $("#btn-sp-prev").addEventListener("click", function () {
+    json("POST", "/api/spotify/previous", {}).then(function () {
+      setTimeout(pollSpotifyStatus, 500);
+    });
+  });
+
+  function pollSpotifyStatus() {
+    fetch("/api/spotify/status")
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.track) {
+          var text = data.track;
+          if (data.artist) text = data.artist + " - " + text;
+          $("#g-np-text").textContent = text;
+          $("#g-now-playing").style.display = "";
+          spotifyPlaying = data.playing !== false;
+          $("#btn-sp-playpause").textContent = spotifyPlaying ? "Pause" : "Play";
+        } else {
+          $("#g-now-playing").style.display = "none";
+        }
+      })
+      .catch(function () {});
+  }
+
+  // ── Add Spotify preset ──
+
+  $("#btn-add-spotify").addEventListener("click", function () {
+    var input = $("#g-spotify-link");
+    var link = input.value.trim();
+    var statusEl = $("#g-spotify-add-status");
+    if (!link) {
+      statusEl.textContent = "Paste a Spotify link first";
+      statusEl.className = "status-msg err";
+      return;
+    }
+    statusEl.textContent = "Adding...";
     statusEl.className = "status-msg";
+    json("POST", "/api/spotify/presets", { uri: link }).then(function (data) {
+      if (data.ok) {
+        input.value = "";
+        statusEl.textContent = "Added: " + (data.preset ? data.preset.name : "playlist");
+        statusEl.className = "status-msg ok";
+        loadSpotifyPresetsForGlobal(data.preset ? data.preset.uri : "");
+      } else {
+        statusEl.textContent = data.error || "Failed to add";
+        statusEl.className = "status-msg err";
+      }
+    }).catch(function () {
+      statusEl.textContent = "Failed to add";
+      statusEl.className = "status-msg err";
+    });
   });
 
   // ── BT speakers in music foldout ──
@@ -594,6 +710,48 @@
         statusEl.className = "status-msg err";
       }
     });
+  });
+
+  // Lights on/off
+  function setLightsState(on) {
+    var rooms = getGlobalSelectedRooms();
+    var statusEl = $("#g-lights-status");
+    if (rooms.length === 0) {
+      statusEl.textContent = "Select at least one room";
+      statusEl.className = "status-msg err";
+      return;
+    }
+    var brightness = on ? parseInt($("#g-brightness").value) : 0;
+    var bri254 = Math.round(brightness * 254 / 100);
+    var pending = rooms.length;
+    var anyOk = false;
+    for (var i = 0; i < rooms.length; i++) {
+      var body = on ? { on: true, bri: bri254 } : { on: false };
+      json("PUT", "/api/hue/rooms/" + rooms[i].id + "/state", body).then(function (data) {
+        if (data.ok) anyOk = true;
+        pending--;
+        if (pending === 0) {
+          statusEl.textContent = anyOk ? (on ? "Lights on" : "Lights off") : "Failed";
+          statusEl.className = anyOk ? "status-msg ok" : "status-msg err";
+        }
+      });
+    }
+  }
+
+  $("#btn-lights-on").addEventListener("click", function () { setLightsState(true); });
+  $("#btn-lights-off").addEventListener("click", function () { setLightsState(false); });
+
+  // Brightness slider
+  $("#g-brightness").addEventListener("input", function () {
+    $("#g-brightness-val").textContent = this.value;
+  });
+  $("#g-brightness").addEventListener("change", function () {
+    var rooms = getGlobalSelectedRooms();
+    if (rooms.length === 0) return;
+    var bri254 = Math.round(parseInt(this.value) * 254 / 100);
+    for (var i = 0; i < rooms.length; i++) {
+      json("PUT", "/api/hue/rooms/" + rooms[i].id + "/state", { on: true, bri: bri254 });
+    }
   });
 
   // Load on page load

@@ -157,9 +157,10 @@ async def add_preset(body: dict) -> dict:
             return {"ok": True, "duplicate": True}
 
     import uuid
-    presets.append({"id": uuid.uuid4().hex[:8], "name": name, "uri": uri})
+    preset = {"id": uuid.uuid4().hex[:8], "name": name, "uri": uri}
+    presets.append(preset)
     save_spotify_presets(presets)
-    return {"ok": True}
+    return {"ok": True, "preset": preset}
 
 
 @router.delete("/presets/{preset_id}")

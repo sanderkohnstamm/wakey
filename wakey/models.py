@@ -68,6 +68,7 @@ class AppConfig(BaseModel):
     audio: AudioConfig = Field(default_factory=AudioConfig)
     hue_alarm: HueConfig = Field(default_factory=HueConfig)
     bluetooth_devices: list[str] = Field(default_factory=list)
+    audio_output: str = "aux"  # "aux" or "bluetooth"
 
 
 class AppState(BaseModel):

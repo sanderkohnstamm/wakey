@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#111113">
   <title>Wakey</title>
-  <link rel="stylesheet" href="/static/style.css?v=9">
+  <link rel="stylesheet" href="/static/style.css?v=10">
 </head>
 <body>
   <div id="connection-banner" class="connection-banner hidden">Not connected to Wakey</div>
@@ -68,6 +68,11 @@
         <span class="foldout-arrow">&#9654;</span>
       </button>
       <div class="foldout-body" id="foldout-music" style="display:none">
+        <div class="source-toggle" id="g-output-toggle">
+          <button type="button" class="source-btn" data-output="aux">AUX</button>
+          <button type="button" class="source-btn" data-output="bluetooth">Bluetooth</button>
+        </div>
+
         <div class="source-toggle" id="g-source-toggle">
           <button type="button" class="source-btn active" data-source="radio">Radio</button>
           <button type="button" class="source-btn" data-source="spotify">Spotify</button>
@@ -82,9 +87,14 @@
 
         <div id="g-source-spotify" style="display:none">
           <div class="form-row">
-            <label for="g-spotify-preset">Preset</label>
+            <label for="g-spotify-preset">Playlist</label>
             <select id="g-spotify-preset" style="flex:1"><option value="">-- Select --</option></select>
           </div>
+          <div class="spotify-add-row">
+            <input type="text" id="g-spotify-link" placeholder="Paste Spotify link or URI">
+            <button class="btn btn-small" id="btn-add-spotify" type="button">Add</button>
+          </div>
+          <div id="g-spotify-add-status" class="status-msg"></div>
         </div>
 
         <div class="form-row">
@@ -97,9 +107,20 @@
           <input type="range" id="g-ramp" min="0" max="120" value="30" style="flex:1">
         </div>
 
-        <div class="foldout-actions">
-          <button class="btn btn-play" id="btn-test-music">Test</button>
-          <button class="btn btn-stop" id="btn-stop-music">Stop</button>
+        <div id="g-music-controls" class="music-controls">
+          <div id="g-controls-radio" class="foldout-actions">
+            <button class="btn btn-play" id="btn-radio-play">Play</button>
+            <button class="btn btn-stop" id="btn-radio-stop">Stop</button>
+          </div>
+          <div id="g-controls-spotify" class="foldout-actions" style="display:none">
+            <button class="btn btn-small" id="btn-sp-prev" title="Previous">&#9664;&#9664;</button>
+            <button class="btn btn-play btn-spotify-play" id="btn-sp-playpause">Play</button>
+            <button class="btn btn-small" id="btn-sp-next" title="Next">&#9654;&#9654;</button>
+          </div>
+        </div>
+
+        <div id="g-now-playing" class="now-playing-bar" style="display:none">
+          <span id="g-np-text" class="np-text"></span>
         </div>
 
         <div id="g-music-status" class="status-msg"></div>
@@ -148,6 +169,16 @@
         <div class="foldout-actions">
           <button class="btn btn-test" id="btn-set-scene">Set Scene</button>
           <button class="btn btn-small" id="btn-test-lights">Test Flash</button>
+        </div>
+
+        <div class="foldout-actions" style="margin-top:8px">
+          <button class="btn btn-play" id="btn-lights-on">Lights On</button>
+          <button class="btn btn-stop" id="btn-lights-off">Lights Off</button>
+        </div>
+
+        <div class="form-row" id="g-brightness-row" style="margin-top:10px">
+          <label for="g-brightness">Brightness <span id="g-brightness-val">100</span>%</label>
+          <input type="range" id="g-brightness" min="1" max="100" value="100" style="flex:1">
         </div>
 
         <div id="g-lights-status" class="status-msg"></div>
@@ -203,6 +234,6 @@
 
   </div>
 
-  <script src="/static/app.js?v=9"></script>
+  <script src="/static/app.js?v=10"></script>
 </body>
 </html>

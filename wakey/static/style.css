@@ -1162,6 +1162,48 @@ input[type="checkbox"] {
   padding: 10px 16px;
 }
 
+/* ── Spotify add row ── */
+
+.spotify-add-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.spotify-add-row input[type="text"] {
+  flex: 1;
+  font-size: 0.82rem;
+  padding: 8px 10px;
+}
+.spotify-add-row .btn {
+  flex-shrink: 0;
+}
+
+/* ── Now playing bar ── */
+
+.now-playing-bar {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+.np-text {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+/* ── Music controls ── */
+
+.music-controls .btn-spotify-play {
+  background: var(--spotify);
+}
+.music-controls #btn-sp-prev,
+.music-controls #btn-sp-next {
+  padding: 14px 18px;
+  font-size: 0.85rem;
+}
+
 /* ── Responsive ── */
 
 @media (min-width: 600px) {

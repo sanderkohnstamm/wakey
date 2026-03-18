@@ -39,10 +39,12 @@ async def lifespan(app: FastAPI):
 
     # Auto-reconnect saved Bluetooth devices in background
     cfg = load_config()
-    if cfg.bluetooth_devices:
+    use_bt = cfg.audio_output == "bluetooth"
+    bluetooth.set_scan_enabled(use_bt)
+    if use_bt and cfg.bluetooth_devices:
         asyncio.create_task(bluetooth.reconnect_saved_devices(cfg.bluetooth_devices))
 
-    # Periodic BT scan so nearby devices appear automatically
+    # Periodic BT scan (only runs when audio_output is "bluetooth")
     asyncio.create_task(bluetooth.periodic_scan_loop(interval=30))
 
     yield
