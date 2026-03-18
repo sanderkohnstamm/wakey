@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#111113">
   <title>Wakey</title>
-  <link rel="stylesheet" href="/static/style.css?v=12">
+  <link rel="stylesheet" href="/static/style.css?v=13">
 </head>
 <body>
   <div id="connection-banner" class="connection-banner hidden">Not connected to Wakey</div>
@@ -28,7 +28,11 @@
     <!-- Inline alarm widget -->
     <div class="alarm-widget">
       <div class="aw-time-row">
-        <input type="text" id="aw-time" value="07:00" class="aw-time-input" inputmode="numeric" maxlength="5" placeholder="HH:MM">
+        <div class="aw-time-split">
+          <input type="text" id="aw-hour" class="aw-time-field" inputmode="numeric" maxlength="2" value="07">
+          <span class="aw-time-colon">:</span>
+          <input type="text" id="aw-min" class="aw-time-field" inputmode="numeric" maxlength="2" value="00">
+        </div>
         <label class="toggle">
           <input type="checkbox" id="aw-enabled" checked>
           <span class="slider"></span>
@@ -234,6 +238,6 @@
 
   </div>
 
-  <script src="/static/app.js?v=12"></script>
+  <script src="/static/app.js?v=13"></script>
 </body>
 </html>

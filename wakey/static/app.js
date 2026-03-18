@@ -98,7 +98,9 @@
     fetch("/api/alarm")
       .then(function (r) { return r.json(); })
       .then(function (a) {
-        $("#aw-time").value = a.time;
+        var parts = a.time.split(":");
+        $("#aw-hour").value = parts[0];
+        $("#aw-min").value = parts[1];
         $("#aw-enabled").checked = a.enabled;
 
         var pills = $$("#aw-days .aw-day");
@@ -122,7 +124,7 @@
     }
 
     var body = {
-      time: $("#aw-time").value,
+      time: String(Math.min(23, Math.max(0, parseInt($("#aw-hour").value) || 0))).padStart(2, "0") + ":" + String(Math.min(59, Math.max(0, parseInt($("#aw-min").value) || 0))).padStart(2, "0"),
       enabled: $("#aw-enabled").checked,
       days: days,
       snooze_minutes: parseInt($("#aw-snooze").value),
@@ -136,16 +138,20 @@
 
   loadAlarm();
 
-  // Time input - auto-format and save on blur
-  $("#aw-time").addEventListener("blur", function () {
-    var raw = this.value.replace(/[^0-9:]/g, "");
-    var parts = raw.split(":");
-    if (parts.length === 2) {
-      var h = Math.min(23, Math.max(0, parseInt(parts[0]) || 0));
-      var m = Math.min(59, Math.max(0, parseInt(parts[1]) || 0));
-      this.value = String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
-      saveAlarm();
-    }
+  // Time fields - clamp and save on blur
+  $("#aw-hour").addEventListener("blur", function () {
+    var v = Math.min(23, Math.max(0, parseInt(this.value) || 0));
+    this.value = String(v).padStart(2, "0");
+    saveAlarm();
+  });
+  $("#aw-min").addEventListener("blur", function () {
+    var v = Math.min(59, Math.max(0, parseInt(this.value) || 0));
+    this.value = String(v).padStart(2, "0");
+    saveAlarm();
+  });
+  // Auto-advance from hour to minute field
+  $("#aw-hour").addEventListener("input", function () {
+    if (this.value.length >= 2) { $("#aw-min").focus(); $("#aw-min").select(); }
   });
 
   // Enable toggle
