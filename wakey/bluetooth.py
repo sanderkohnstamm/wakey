@@ -106,7 +106,7 @@ async def scan(duration: int = 8) -> list[dict]:
         text=True,
         timeout=duration + 5,
     ))
-    return list_devices()
+    return await loop.run_in_executor(None, list_devices)
 
 
 def list_devices() -> list[dict]:
@@ -155,7 +155,7 @@ async def connect_device(mac: str) -> dict:
     loop = asyncio.get_event_loop()
 
     # Check if already connected
-    info = _get_device_info(mac)
+    info = await loop.run_in_executor(None, _get_device_info, mac)
     if info.get("connected"):
         return {"ok": True, "already": True}
 
@@ -181,7 +181,7 @@ async def connect_device(mac: str) -> dict:
     await asyncio.sleep(2)
 
     # If multiple devices connected, set up combined sink
-    connected = get_connected_devices()
+    connected = await loop.run_in_executor(None, get_connected_devices)
     if len(connected) > 1:
         await loop.run_in_executor(None, setup_combined_sink)
 
@@ -200,7 +200,7 @@ async def disconnect_device(mac: str) -> dict:
     await asyncio.sleep(1)
 
     # Update combined sink if there are still multiple connected
-    connected = get_connected_devices()
+    connected = await loop.run_in_executor(None, get_connected_devices)
     if len(connected) > 1:
         await loop.run_in_executor(None, setup_combined_sink)
     elif len(connected) == 1:

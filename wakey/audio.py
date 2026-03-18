@@ -74,12 +74,12 @@ def stop_playback() -> None:
     if _process is not None:
         try:
             _process.terminate()
-            _process.wait(timeout=3)
         except Exception:
-            try:
-                _process.kill()
-            except Exception:
-                pass
+            pass
+        try:
+            _process.kill()
+        except Exception:
+            pass
         _process = None
         logger.info("Playback stopped")
 

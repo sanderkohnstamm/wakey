@@ -32,6 +32,9 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).parent
 
 
+_bg_tasks: list[asyncio.Task] = []
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     scheduler.start()
@@ -42,12 +45,14 @@ async def lifespan(app: FastAPI):
     use_bt = cfg.audio_output == "bluetooth"
     bluetooth.set_scan_enabled(use_bt)
     if use_bt and cfg.bluetooth_devices:
-        asyncio.create_task(bluetooth.reconnect_saved_devices(cfg.bluetooth_devices))
+        _bg_tasks.append(asyncio.create_task(bluetooth.reconnect_saved_devices(cfg.bluetooth_devices)))
 
     # Periodic BT scan (only runs when audio_output is "bluetooth")
-    asyncio.create_task(bluetooth.periodic_scan_loop(interval=30))
+    _bg_tasks.append(asyncio.create_task(bluetooth.periodic_scan_loop(interval=30)))
 
     yield
+    for t in _bg_tasks:
+        t.cancel()
     scheduler.shutdown()
 
 
