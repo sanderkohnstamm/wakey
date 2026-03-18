@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#111113">
   <title>Wakey</title>
-  <link rel="stylesheet" href="/static/style.css?v=10">
+  <link rel="stylesheet" href="/static/style.css?v=11">
 </head>
 <body>
   <div id="connection-banner" class="connection-banner hidden">Not connected to Wakey</div>
@@ -28,7 +28,19 @@
     <!-- Inline alarm widget -->
     <div class="alarm-widget">
       <div class="aw-time-row">
-        <input type="time" id="aw-time" value="07:00" class="aw-time-input">
+        <div class="aw-time-scroll">
+          <div class="aw-scroll-col">
+            <button type="button" class="aw-scroll-btn" data-target="aw-hour" data-dir="1">&#9650;</button>
+            <input type="text" id="aw-hour" class="aw-time-field" value="07" readonly>
+            <button type="button" class="aw-scroll-btn" data-target="aw-hour" data-dir="-1">&#9660;</button>
+          </div>
+          <span class="aw-time-colon">:</span>
+          <div class="aw-scroll-col">
+            <button type="button" class="aw-scroll-btn" data-target="aw-min" data-dir="1">&#9650;</button>
+            <input type="text" id="aw-min" class="aw-time-field" value="00" readonly>
+            <button type="button" class="aw-scroll-btn" data-target="aw-min" data-dir="-1">&#9660;</button>
+          </div>
+        </div>
         <label class="toggle">
           <input type="checkbox" id="aw-enabled" checked>
           <span class="slider"></span>
@@ -234,6 +246,6 @@
 
   </div>
 
-  <script src="/static/app.js?v=10"></script>
+  <script src="/static/app.js?v=11"></script>
 </body>
 </html>

@@ -94,11 +94,41 @@
 
   // ── Inline alarm widget ──
 
+  // ── 24h time picker helpers ──
+
+  function getAlarmTime() {
+    return $("#aw-hour").value + ":" + $("#aw-min").value;
+  }
+
+  function setAlarmTime(timeStr) {
+    var parts = timeStr.split(":");
+    $("#aw-hour").value = String(parseInt(parts[0])).padStart(2, "0");
+    $("#aw-min").value = String(parseInt(parts[1])).padStart(2, "0");
+  }
+
+  // Arrow buttons
+  var scrollBtns = $$(".aw-scroll-btn");
+  for (var si = 0; si < scrollBtns.length; si++) {
+    scrollBtns[si].addEventListener("click", function () {
+      var target = this.getAttribute("data-target");
+      var dir = parseInt(this.getAttribute("data-dir"));
+      var field = document.getElementById(target);
+      var val = parseInt(field.value);
+      var max = target === "aw-hour" ? 23 : 59;
+      var step = target === "aw-hour" ? 1 : 5;
+      val = val + dir * step;
+      if (val < 0) val = max + 1 + val;
+      if (val > max) val = val - max - 1;
+      field.value = String(val).padStart(2, "0");
+      saveAlarm();
+    });
+  }
+
   function loadAlarm() {
     fetch("/api/alarm")
       .then(function (r) { return r.json(); })
       .then(function (a) {
-        $("#aw-time").value = a.time;
+        setAlarmTime(a.time);
         $("#aw-enabled").checked = a.enabled;
 
         var pills = $$("#aw-days .aw-day");
@@ -122,7 +152,7 @@
     }
 
     var body = {
-      time: $("#aw-time").value,
+      time: getAlarmTime(),
       enabled: $("#aw-enabled").checked,
       days: days,
       snooze_minutes: parseInt($("#aw-snooze").value),
@@ -135,9 +165,6 @@
   }
 
   loadAlarm();
-
-  // Time input
-  $("#aw-time").addEventListener("change", function () { saveAlarm(); });
 
   // Enable toggle
   $("#aw-enabled").addEventListener("change", function () { saveAlarm(); });
