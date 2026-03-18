@@ -138,6 +138,24 @@
 
   loadAlarm();
 
+  // Arrow buttons
+  var scrollBtns = $$(".aw-scroll-btn");
+  for (var si = 0; si < scrollBtns.length; si++) {
+    scrollBtns[si].addEventListener("click", function () {
+      var target = this.getAttribute("data-target");
+      var dir = parseInt(this.getAttribute("data-dir"));
+      var field = document.getElementById(target);
+      var val = parseInt(field.value) || 0;
+      var max = target === "aw-hour" ? 23 : 59;
+      var step = target === "aw-hour" ? 1 : 5;
+      val = val + dir * step;
+      if (val < 0) val = max + 1 + val;
+      if (val > max) val = val - max - 1;
+      field.value = String(val).padStart(2, "0");
+      saveAlarm();
+    });
+  }
+
   // Time fields - clamp and save on blur
   $("#aw-hour").addEventListener("blur", function () {
     var v = Math.min(23, Math.max(0, parseInt(this.value) || 0));
