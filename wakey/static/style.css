@@ -248,49 +248,24 @@ body {
   gap: 16px;
   margin-bottom: 14px;
 }
-.aw-time-scroll {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.aw-scroll-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-.aw-scroll-btn {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 1rem;
-  padding: 4px 12px;
-  cursor: pointer;
-  -webkit-appearance: none;
-  transition: color 0.15s;
-}
-.aw-scroll-btn:active {
-  color: var(--primary);
-}
-.aw-time-field {
-  width: 70px;
+.aw-time-input {
+  width: 180px;
   font-size: 2.4rem;
   font-weight: 300;
   font-variant-numeric: tabular-nums;
   text-align: center;
-  padding: 4px 0;
+  padding: 8px 0;
   background: none;
   color: var(--text);
   border: none;
   border-bottom: 2px solid var(--border);
   border-radius: 0;
   -webkit-appearance: none;
+  transition: border-color 0.2s;
 }
-.aw-time-colon {
-  font-size: 2.4rem;
-  font-weight: 300;
-  color: var(--text);
-  padding-bottom: 4px;
+.aw-time-input:focus {
+  outline: none;
+  border-bottom-color: var(--primary);
 }
 .aw-days {
   display: flex;
