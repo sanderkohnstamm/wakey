@@ -258,6 +258,10 @@ body {
   flex-direction: column;
   align-items: center;
 }
+.aw-arrows {
+  display: flex;
+  gap: 4px;
+}
 .aw-scroll-btn {
   background: none;
   border: none;

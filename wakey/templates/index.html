@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#111113">
   <title>Wakey</title>
-  <link rel="stylesheet" href="/static/style.css?v=14">
+  <link rel="stylesheet" href="/static/style.css?v=15">
 </head>
 <body>
   <div id="connection-banner" class="connection-banner hidden">Not connected to Wakey</div>
@@ -30,15 +30,19 @@
       <div class="aw-time-row">
         <div class="aw-time-split">
           <div class="aw-scroll-col">
-            <button type="button" class="aw-scroll-btn" data-target="aw-hour" data-dir="1">&#9650;</button>
             <input type="text" id="aw-hour" class="aw-time-field" inputmode="numeric" maxlength="2" value="07">
-            <button type="button" class="aw-scroll-btn" data-target="aw-hour" data-dir="-1">&#9660;</button>
+            <div class="aw-arrows">
+              <button type="button" class="aw-scroll-btn" data-target="aw-hour" data-dir="-1">&#9660;</button>
+              <button type="button" class="aw-scroll-btn" data-target="aw-hour" data-dir="1">&#9650;</button>
+            </div>
           </div>
           <span class="aw-time-colon">:</span>
           <div class="aw-scroll-col">
-            <button type="button" class="aw-scroll-btn" data-target="aw-min" data-dir="1">&#9650;</button>
             <input type="text" id="aw-min" class="aw-time-field" inputmode="numeric" maxlength="2" value="00">
-            <button type="button" class="aw-scroll-btn" data-target="aw-min" data-dir="-1">&#9660;</button>
+            <div class="aw-arrows">
+              <button type="button" class="aw-scroll-btn" data-target="aw-min" data-dir="-1">&#9660;</button>
+              <button type="button" class="aw-scroll-btn" data-target="aw-min" data-dir="1">&#9650;</button>
+            </div>
           </div>
         </div>
         <label class="toggle">
@@ -246,6 +250,6 @@
 
   </div>
 
-  <script src="/static/app.js?v=14"></script>
+  <script src="/static/app.js?v=15"></script>
 </body>
 </html>
