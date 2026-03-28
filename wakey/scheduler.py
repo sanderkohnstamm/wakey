@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -59,7 +59,7 @@ def _add_alarm_job(a: Alarm) -> None:
 
     # Subtract offset to get trigger time
     trigger_dt = datetime.now().replace(hour=hour, minute=minute, second=0)
-    from datetime import timedelta
+
     trigger_dt -= timedelta(minutes=offset)
     trigger_hour = trigger_dt.hour
     trigger_minute = trigger_dt.minute
@@ -89,7 +89,7 @@ def get_next_fire_time() -> str | None:
     Jobs fire at alarm_time - hue_offset. We add the offset back
     so the home screen shows when music actually starts.
     """
-    from datetime import timedelta
+
 
     jobs = scheduler.get_jobs()
     if not jobs:

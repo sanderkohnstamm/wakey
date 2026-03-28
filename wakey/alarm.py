@@ -111,11 +111,14 @@ async def dismiss() -> None:
 
 async def snooze(alarm: Alarm) -> None:
     """Snooze: stop audio, wait snooze_minutes, restart."""
-    global _audio_task, _auto_stop_task
+    global _sunrise_task, _audio_task, _auto_stop_task
 
     logger.info("Snoozing alarm for %d minutes", alarm.snooze_minutes)
     audio.stop_playback()
     await spotify.stop()
+    if _sunrise_task:
+        _sunrise_task.cancel()
+        _sunrise_task = None
     if _audio_task:
         _audio_task.cancel()
     if _auto_stop_task:

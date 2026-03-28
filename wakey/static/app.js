@@ -368,12 +368,9 @@
       });
   }
 
-  // Auto-save on change + live volume (throttled)
+  // Auto-save on change + live volume (debounced 150ms)
   var _volTimer = null;
-  $("#g-volume").addEventListener("input", function () {
-    $("#g-volume-val").textContent = this.value;
-    if (_volTimer) return;
-    _volTimer = setTimeout(function () { _volTimer = null; }, 200);
+  function _sendLiveVolume() {
     var vol = parseInt($("#g-volume").value);
     var source = getGlobalSelectedSource();
     if (source === "spotify" && spotifyPlaying) {
@@ -381,6 +378,11 @@
     } else if (source === "radio" && radioPlaying) {
       json("POST", "/api/config/test-radio/volume", { volume: vol });
     }
+  }
+  $("#g-volume").addEventListener("input", function () {
+    $("#g-volume-val").textContent = this.value;
+    clearTimeout(_volTimer);
+    _volTimer = setTimeout(_sendLiveVolume, 150);
   });
   $("#g-volume").addEventListener("change", function () { saveGlobalAudioConfig(); });
   $("#g-ramp").addEventListener("input", function () { $("#g-ramp-val").textContent = this.value; });
@@ -653,7 +655,8 @@
         for (var j = 0; j < boxes.length; j++) {
           boxes[j].addEventListener("change", function () {
             var sel = getGlobalSelectedRooms();
-            loadGlobalHueScenes(sel, "");
+            var currentScene = $("#g-hue-scene").value || "";
+            loadGlobalHueScenes(sel, currentScene);
             saveGlobalHueConfig();
           });
         }
