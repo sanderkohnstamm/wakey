@@ -36,7 +36,7 @@ async def get_status() -> dict:
 async def dismiss_alarm() -> dict:
     st = alarm_manager.get_state()
     if st.state == AlarmState.IDLE:
-        raise HTTPException(400, "No active alarm")
+        return {"ok": True}  # already idle, no-op
     await alarm_manager.dismiss()
     return {"ok": True}
 

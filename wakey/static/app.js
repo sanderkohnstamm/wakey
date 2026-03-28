@@ -749,11 +749,28 @@
   function setLightsState(on) {
     var rooms = getGlobalSelectedRooms();
     var statusEl = $("#g-lights-status");
+    // Fall back to saved config rooms if none checked in UI
     if (rooms.length === 0) {
-      statusEl.textContent = "Select at least one room";
-      statusEl.className = "status-msg err";
+      fetch("/api/config/hue-alarm")
+        .then(function (r) { return r.json(); })
+        .then(function (cfg) {
+          var saved = cfg.rooms || [];
+          if (saved.length === 0 && cfg.room_id) {
+            saved = [{ id: cfg.room_id, name: cfg.room_name || "" }];
+          }
+          if (saved.length === 0) {
+            statusEl.textContent = "No rooms configured";
+            statusEl.className = "status-msg err";
+            return;
+          }
+          _applyLightsState(saved, on, statusEl);
+        });
       return;
     }
+    _applyLightsState(rooms, on, statusEl);
+  }
+
+  function _applyLightsState(rooms, on, statusEl) {
     var brightness = on ? parseInt($("#g-brightness").value) : 0;
     var bri254 = Math.round(brightness * 254 / 100);
     var pending = rooms.length;

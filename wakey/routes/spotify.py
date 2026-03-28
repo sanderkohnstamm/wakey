@@ -46,8 +46,11 @@ async def status() -> dict:
 @router.post("/play")
 async def play(body: dict) -> dict:
     """Start playback. Optional: uri (spotify URI for playlist/album/track)."""
-    from .. import audio
-    # Stop radio before playing Spotify (mutual exclusion)
+    from .. import alarm as alarm_manager, audio
+    from ..models import AlarmState
+    # Dismiss any active alarm first
+    if alarm_manager.get_state().state != AlarmState.IDLE:
+        await alarm_manager.dismiss()
     audio.stop_playback()
 
     uri = body.get("uri")
