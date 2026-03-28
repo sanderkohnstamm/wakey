@@ -368,8 +368,20 @@
       });
   }
 
-  // Auto-save on change
-  $("#g-volume").addEventListener("input", function () { $("#g-volume-val").textContent = this.value; });
+  // Auto-save on change + live volume (throttled)
+  var _volTimer = null;
+  $("#g-volume").addEventListener("input", function () {
+    $("#g-volume-val").textContent = this.value;
+    if (_volTimer) return;
+    _volTimer = setTimeout(function () { _volTimer = null; }, 200);
+    var vol = parseInt($("#g-volume").value);
+    var source = getGlobalSelectedSource();
+    if (source === "spotify" && spotifyPlaying) {
+      json("POST", "/api/spotify/volume", { volume: vol });
+    } else if (source === "radio" && radioPlaying) {
+      json("POST", "/api/config/test-radio/volume", { volume: vol });
+    }
+  });
   $("#g-volume").addEventListener("change", function () { saveGlobalAudioConfig(); });
   $("#g-ramp").addEventListener("input", function () { $("#g-ramp-val").textContent = this.value; });
   $("#g-ramp").addEventListener("change", function () { saveGlobalAudioConfig(); });
