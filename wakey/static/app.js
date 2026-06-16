@@ -827,6 +827,17 @@
   // ═══════════════════════════════════════
 
   function loadSettingsView() {
+    fetch("/api/device")
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        $("#dev-hostname").textContent = d.hostname || "unknown";
+        $("#dev-ip").textContent = d.ip || "unknown";
+      })
+      .catch(function () {
+        $("#dev-hostname").textContent = "error";
+        $("#dev-ip").textContent = "error";
+      });
+
     loadBtStatus();
     $("#bt-status").textContent = "";
     $("#bt-status").className = "status-msg";

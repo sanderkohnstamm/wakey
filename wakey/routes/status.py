@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import socket
+
 from fastapi import APIRouter, HTTPException
 
 from .. import alarm as alarm_manager
@@ -10,6 +12,23 @@ from ..models import AlarmState
 from ..scheduler import get_next_fire_time
 
 router = APIRouter(prefix="/api")
+
+
+def _local_ip() -> str:
+    """Best-effort local LAN IP (no traffic actually sent)."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        return s.getsockname()[0]
+    except OSError:
+        return "unknown"
+    finally:
+        s.close()
+
+
+@router.get("/device")
+async def get_device() -> dict:
+    return {"hostname": socket.gethostname(), "ip": _local_ip()}
 
 
 @router.get("/status")
